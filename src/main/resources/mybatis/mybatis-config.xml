@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+	<settings>
+		<!-- <setting name="cacheEnabled" value="false" /> -->
+		<!-- <setting name="useGeneratedKeys" value="true" /> -->
+		<!-- <setting name="defaultExecutorType" value="REUSE" /> -->
+		<!-- <setting name="defaultStatementTimeout" value="25000"/> -->
+		<setting name="mapUnderscoreToCamelCase" value="true" />
+		<setting name="callSettersOnNulls" value="true" />
+		<setting name="jdbcTypeForNull" value="NULL" />
+		<setting name="logPrefix" value="mybatis.mapper." />
+		<setting name="localCacheScope" value="STATEMENT" />
+	</settings>
+
+	<typeAliases>
+		<typeAlias alias="box" type="kr.aipeppers.pep.core.data.Box" />
+		<typeAlias alias="linkMap" type="java.util.LinkedHashMap" />
+	</typeAliases>
+
+	<typeHandlers>
+		<typeHandler handler="org.apache.ibatis.type.LocalDateTimeTypeHandler" javaType="java.time.LocalDateTime" jdbcType="TIMESTAMP" />
+	</typeHandlers>
+
+	<plugins>
+		<plugin interceptor="kr.aipeppers.pep.core.mybatis.MybatisLoggingInterceptor" />
+	</plugins>
+</configuration>

@@ -1,0 +1,610 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="srch.info">
+
+	<sql id="userInfo">
+		<if test=' userId != null and userId != "" '>
+			AND U.ID NOT IN (SELECT BLOCK_USER_ID
+					 		 FROM BLOCK_USER
+					 		 WHERE USER_ID = #{sBox.id}
+					 		 AND BLOCK_USER_ID IN ( SELECT U2.ID
+													FROM USER AS U2
+													WHERE U2.USERNAME LIKE CONCAT('%',#{keyword},'%')
+													AND U2.ACTIVE  = 1
+													GROUP BY U2.USERNAME)
+				    )
+		</if>
+	</sql>
+
+	<sql id="videoInfo">
+		<if test=' userId != null and userId != "" '>
+			AND VI.USER_ID NOT IN (SELECT BU.BLOCK_USER_ID
+									 FROM BLOCK_USER AS BU
+									 WHERE BU.USER_ID = #{sBox.id}
+									 AND BU.BLOCK_USER_ID IN ( SELECT V2.USER_ID
+															FROM VIDEO AS V2
+															WHERE V2.DESCRIPTION LIKE CONCAT('%',#{keyword},'%')
+															AND V2.PRIVACY_TYPE = 'public'
+															GROUP BY V2.USER_ID)
+						    )
+		</if>
+	</sql>
+
+	<sql id="hashtagDetail">
+		<if test=' userId != null and userId != "" '>
+			AND HV.VIDEO_ID NOT IN (SELECT BU.BLOCK_USER_ID
+								FROM BLOCK_USER AS BU
+								WHERE BU.USER_ID  = #{sBox.id})
+		</if>
+	</sql>
+
+	<sql id="userHashtag">
+		<if test=' userId != null and userId != "" '>
+		AND U.ID NOT IN (SELECT BU.BLOCK_USER_ID
+						 FROM BLOCK_USER AS BU
+						 WHERE BU.USER_ID  = #{sBox.id} )
+		</if>
+	</sql>
+
+	<select id="userCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM USER AS U
+		WHERE U.USERNAME LIKE CONCAT('%',#{keyword},'%')
+		AND U.ACTIVE  = 1
+		<include refid="userInfo" />
+	</select>
+
+	<select id="userList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY U.ID ASC) AS RNUM
+			, U.ID
+			, U.EMAIL
+			, U.PASSWORD
+			, U.ACTIVE
+			, U.USERNAME
+			, U.ROLE
+			, U.PROFILE_PIC
+			, U.PROFILE_PIC_SMALL
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM USER AS U
+		WHERE U.USERNAME LIKE CONCAT('%',#{keyword},'%')
+		AND U.ACTIVE  = 1
+		<include refid="userInfo" />
+		GROUP BY U.USERNAME
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="myVideoCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS VIDEO_CNT
+		FROM VIDEO
+		WHERE USER_ID = #{sBox.id}
+		AND VIDEO_ACTIVE = 1
+	</select>
+
+	<select id="myFollowerCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS FOLLOWER_CNT
+		FROM FOLLOWER
+		WHERE RECEIVER_ID = #{sBox.id}
+	</select>
+
+	<select id="videoCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*)AS CNT
+		FROM VIDEO AS VI
+		WHERE VI.DESCRIPTION  LIKE CONCAT('%',#{keyword},'%')
+		AND VI.privacy_type = 'public'
+		<include refid="videoInfo" />
+	</select>
+
+	<select id="videoList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY VI.ID ASC) AS RNUM
+			, VI.ID
+			, VI.USER_ID
+			, VI.DESCRIPTION
+			, VI.VIDEO
+			, VI.THUM
+			, VI.GIF
+			, VI.VIDEO_ACTIVE
+			, VI.VIEW
+			, VI.SECTION
+			, VI.SOUND_ID
+			, VI.PRIVACY_TYPE
+			, VI.ALLOW_COMMENTS
+			, VI.ALLOW_DUET
+			, VI.BLOCK
+			, VI.DUET_VIDEO_ID
+			, VI.OLD_VIDEO_ID
+			, VI.DURATION
+			, VI.PROMOTE
+			, VI.REG_ID
+			, DATE_FORMAT(VI.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+			, VI.MOD_ID
+			, DATE_FORMAT(VI.MOD_DT , '%Y-%m-%d %H:%i:%s')AS MOD_DT
+		FROM VIDEO AS VI
+		WHERE VI.DESCRIPTION  LIKE CONCAT('%',#{keyword},'%')
+		AND VI.PRIVACY_TYPE = 'public'
+		<include refid="videoInfo" />
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="videoView" parameterType="map" resultType="box">
+		SELECT
+			  VI.ID
+			, VI.USER_ID
+			, VI.DESCRIPTION
+			, VI.VIDEO
+			, VI.THUM
+			, VI.GIF
+			, VI.VIDEO_ACTIVE
+			, VI.VIEW
+			, VI.SECTION
+			, VI.SOUND_ID
+			, VI.PRIVACY_TYPE
+			, VI.ALLOW_COMMENTS
+			, VI.ALLOW_DUET
+			, VI.BLOCK
+			, VI.DUET_VIDEO_ID
+			, VI.OLD_VIDEO_ID
+			, VI.DURATION
+			, VI.PROMOTE
+			, VI.REG_ID
+			, DATE_FORMAT(VI.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+			, VI.MOD_ID
+			, DATE_FORMAT(VI.MOD_DT , '%Y-%m-%d %H:%i:%s')AS MOD_DT
+			,(SELECT COUNT(ID) FROM VIDEO_LIKE WHERE video_id = VI.id AND USER_ID NOT IN (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID =#{userId} )) AS like_count
+		FROM VIDEO AS VI
+		WHERE VI.ID = #{videoId}
+	</select>
+
+	<select id="userView" parameterType="map" resultType="box">
+		SELECT
+	 	      U.ID
+			, U.DEVICE_TOKEN
+			, U.AUTH_TOKEN
+			, U.EMAIL
+			, U.PASSWORD
+			, U.PHONE
+			, U.ACTIVE
+			, U.ACTIVE_REASON
+			, U.ACTIVE_REASON_DETAIL
+			, U.USERNAME
+			, U.ROLE
+			, U.POINT
+			, U.GRADE
+			, U.FIRST_NAME
+			, U.LAST_NAME
+			, U.GENDER
+			, U.BIO
+			, U.PROFILE_PIC
+			, U.PROFILE_PIC_SMALL
+			, U.TOKEN
+			, U.IP
+			, U.LOCK_CNT
+			, U.PASS_CHN_YN
+			, U.PASS_MODIFY_DATETIME
+			, U.REG_ID
+			, DATE_FORMAT(U.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+			, U.MOD_ID
+			, DATE_FORMAT(U.MOD_DT , '%Y-%m-%d %H:%i:%s')AS MOD_DT
+		FROM USER AS U
+		WHERE U.ID = #{userId}
+	</select>
+
+	<select id="pushNotificationView" parameterType="map" resultType="box">
+		SELECT
+			  PN.ID
+			, PN.LIKES
+			, PN.COMMENTS
+			, PN.NEW_FOLLOWERS
+			, PN.MENTIONS
+			, PN.DIRECT_MESSAGES
+			, PN.VIDEO_UPDATES
+			, PN.POST_UPDATE
+			, PN.EVENT
+		FROM PUSH_NOTIFICATION PN
+		WHERE PN.ID = #{sBox.id}
+	</select>
+
+	<select id="soundView" parameterType="map" resultType="box">
+		SELECT
+			  SO.ID
+			, SO.AUDIO
+			, SO.DURATION
+			, SO.NAME
+			, SO.DESCRIPTION
+			, SO.THUM
+			, SO.SOUND_SECTION_ID
+			, SO.UPLOADED_BY
+			, SO.PUBLISH
+			,  DATE_FORMAT(SO.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+		FROM SOUND AS SO
+		WHERE SO.ID = #{videoId}
+	</select>
+
+	<select id="hashList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			ROW_NUMBER() OVER(ORDER BY U.ID ASC) AS RNUM
+			,H.*
+		    ,sum(V.view) as total_views
+		    , (SELECT count(thv.id) FROM hashtag_video as thv WHERE thv.hashtag_id = hv.hashtag_id AND thv.video_id IN
+				(SELECT tv.id FROM video as tv WHERE tv.id = thv.video_id AND tv.video_active = 1 AND tv.privacy_type = 'public' AND tv.user_id IN
+				(SELECT id FROM user WHERE id = tv.user_id AND active = 1 AND id NOT IN
+				(SELECT block_user_id FROM block_user WHERE user_id = #{sBox.id}  ) ) ) )  as h_cnt
+		FROM
+			hashtag_video HV
+
+		    LEFT JOIN hashtag AS H
+			ON HV.hashtag_id = H.id
+
+			LEFT JOIN video AS V
+			ON HV.video_id = V.id
+
+			RIGHT JOIN user AS U
+			ON U.id = V.user_id
+		    AND U.active = 1
+
+		    WHERE V.privacy_type = 'public'
+		    AND V.user_id NOT IN ( SELECT BLOCK_USER_ID
+													 FROM BLOCK_USER
+													 WHERE USER_ID = #{sBox.id})
+			AND V.video_active = '1' AND U.active = 1
+
+		GROUP BY HV.hashtag_id
+		ORDER BY h_cnt DESC
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="srcVideoList" parameterType="map" resultType="box">
+		SELECT
+
+		v.ID
+		,U.ID AS USER_ID
+		,v.description
+		,v.video
+		,v.thum
+		,v.gif
+		,v.view
+		,v.section
+		,v.sound_id
+		,v.privacy_type
+		,v.allow_comments
+		,v.allow_duet
+		,v.block
+		,v.duet_video_id
+		,v.old_video_id
+		,v.duration
+		,v.promote
+		,v.reg_dt
+		,hv.id as hv_id
+		,(SELECT COUNT(ID) FROM VIDEO_LIKE WHERE video_id = v.id AND USER_ID = #{sBox.id} ) AS 'like'
+        ,(SELECT count(id) FROM video_favourite WHERE video_id = v.id ) AS favourite
+        ,(SELECT COUNT(ID) FROM video_comment WHERE video_id = v.id) + (SELECT COUNT(ID) FROM video_comment_reply WHERE video_id = v.id) AS comment_count
+		,(SELECT COUNT(ID) FROM VIDEO_LIKE WHERE video_id = v.id AND USER_ID NOT IN (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID =#{sBox.id} )) AS like_count
+		,U.username
+        ,U.email
+        ,u.phone
+        ,u.active
+        ,u.active_reason
+        ,u.active_reason_detail
+        ,u.role
+        ,u.point
+        ,u.grade
+        ,u.first_name
+        ,u.last_name
+        ,u.gender
+        ,u.bio
+		,u.profile_pic
+        ,u.profile_pic_small
+        ,u.reg_dt as user_reg_dt
+
+        ,PN.id as pnId
+        ,pn.likes
+        ,pn.comments
+        ,pn.new_followers
+        ,pn.mentions
+        ,pn.direct_messages
+        ,pn.video_updates
+        ,pn.post_update
+        ,pn.event
+
+		FROM hashtag_video hv
+			LEFT JOIN hashtag h
+				ON hv.hashtag_id = h.id
+
+			LEFT JOIN video v
+				ON hv.video_id = v.id
+
+			RIGHT JOIN USER U
+				ON U.ID = v.user_id
+		        AND active = '1'
+
+		    LEFT JOIN push_notification PN
+				ON U.ID = PN.ID
+
+            LEFT JOIN privacy_setting PS
+				ON U.ID = PS.id
+
+			WHERE hv.hashtag_id = 	#{id}
+				AND v.privacy_type = 'public'
+		        AND v.video_active = '1'
+
+		        AND v.user_id NOT IN (SELECT BLOCK_USER_ID
+																 FROM BLOCK_USER
+																 WHERE USER_ID = #{sBox.id} )
+
+				ORDER BY v.reg_dt desc LIMIT 10
+	</select>
+
+	<select id="hashCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM (
+				SELECT
+				ROW_NUMBER() OVER(ORDER BY U.ID ASC) AS RNUM
+				,H.*
+			    ,sum(V.view) as total_views
+			    , (SELECT count(thv.id) FROM hashtag_video as thv WHERE thv.hashtag_id = hv.hashtag_id AND thv.video_id IN
+					(SELECT tv.id FROM video as tv WHERE tv.id = thv.video_id AND tv.video_active = 1 AND tv.privacy_type = 'public' AND tv.user_id IN
+					(SELECT id FROM user WHERE id = tv.user_id AND active = 1 AND id NOT IN
+					(SELECT block_user_id FROM block_user WHERE user_id = #{sBox.id}  ) ) ) )  as h_cnt
+			FROM
+				hashtag_video HV
+
+			    LEFT JOIN hashtag AS H
+				ON HV.hashtag_id = H.id
+
+				LEFT JOIN video AS V
+				ON HV.video_id = V.id
+
+				RIGHT JOIN user AS U
+				ON U.id = V.user_id
+			    AND U.active = 1
+
+			    WHERE V.privacy_type = 'public'
+			    AND V.user_id NOT IN ( SELECT BLOCK_USER_ID
+														 FROM BLOCK_USER
+														 WHERE USER_ID = #{sBox.id})
+				AND V.video_active = '1' AND U.active = 1
+
+			GROUP BY HV.hashtag_id
+		) AS T
+	</select>
+
+	<select id="hashtagSrchList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			ROW_NUMBER() OVER(ORDER BY h_cnt DESC) AS RNUM
+			,h.*
+			,( SELECT count(*) FROM hashtag_video as hv WHERE hv.hashtag_id = h.id AND hv.video_id IN (SELECT id FROM video as v WHERE id = hv.video_id AND video_active = 1 AND privacy_type = "public" ) ) as h_cnt
+		FROM hashtag h
+
+		WHERE NAME LIKE CONCAT('%',#{keyword},'%')
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="hashtagSrchListCnt" parameterType="map" resultType="int">
+		SELECT
+			IFNULL(cnt , 0)
+		FROM (
+			SELECT
+				COUNT(h.id) cnt
+			FROM hashtag h
+
+			WHERE NAME LIKE CONCAT('%',#{keyword},'%')
+		) T
+	</select>
+
+	<select id="hashtagSrchViewsCnt" parameterType="map" resultType="int">
+		SELECT
+			IFNULL(cnt , 0)
+		FROM (
+			SELECT
+				SUM(v.view) cnt
+			FROM hashtag_video as hv
+				LEFT JOIN video v
+					ON hv.video_id = v.id
+
+				WHERE hv.hashtag_id = #{hashId}
+					AND v.privacy_type ='public'
+				    AND v.video_active = '1'
+				    AND v.user_id NOT IN (SELECT BLOCK_USER_ID FROM block_user WHERE USER_ID =#{sBox.id} )
+		) T
+	</select>
+
+	<select id="hashtagSrchVideoCnt" parameterType="map" resultType="int">
+		SELECT
+			IFNULL(cnt , 0)
+		FROM (
+			SELECT
+				COUNT(hv.id) cnt
+			FROM hashtag_video hv
+
+			LEFT JOIN hashtag h
+				ON h.id = hv.hashtag_id
+
+			LEFT JOIN video v
+				ON hv.video_id = v.id
+
+			RIGHT JOIN user u
+				ON u.id = v.user_id
+			    AND u.active = '1'
+
+			WHERE hv.hashtag_id = #{hashId}
+				AND v.privacy_type = 'public'
+			    AND v.video_active ='1'
+			    AND v.user_id NOT IN (SELECT BLOCK_USER_ID FROM block_user WHERE USER_ID =#{sBox.id})
+		) T
+	</select>
+
+	<select id="hashtagSrchFavourite" parameterType="map" resultType="int">
+		SELECT
+			IFNULL(cnt , 0)
+		FROM (
+			SELECT
+				COUNT(ID) cnt
+			FROM hashtag_favourite
+
+			WHERE USER_ID = #{sBox.id}
+			AND HASHTAG_ID = #{hashId}
+		) T
+	</select>
+
+
+	<select id="hashtagDetailList" parameterType="map" resultType="box">
+		SELECT
+			  HV.ID
+			, HV.HASHTAG_ID
+			, HV.VIDEO_ID
+			, HV.REG_ID
+			, HV.REG_DT
+			, HV.MOD_ID
+			, HV.MOD_DT
+			, (SELECT V.USER_ID
+				FROM VIDEO AS V
+				WHERE V.ID = HV.VIDEO_ID) AS USER_ID
+		FROM HASHTAG_VIDEO HV
+		WHERE HV.HASHTAG_ID = ( SELECT H.ID
+								FROM HASHTAG H
+								WHERE H.NAME = #{hashtag})
+		<include refid="hashtagDetail" />
+	</select>
+
+	<select id="videoInfoView" parameterType="map" resultType="box">
+		SELECT
+			  VI.ID
+			, VI.USER_ID
+			, VI.DESCRIPTION
+			, VI.VIDEO AS VIDEO_URL
+			, VI.THUM
+			, VI.GIF
+			, VI.VIDEO_ACTIVE
+			, VI.VIEW
+			, VI.SECTION
+			, VI.SOUND_ID
+			, VI.PRIVACY_TYPE
+			, VI.ALLOW_COMMENTS
+			, VI.ALLOW_DUET
+			, VI.BLOCK
+			, VI.DUET_VIDEO_ID
+			, VI.OLD_VIDEO_ID
+			, VI.DURATION
+			, VI.PROMOTE
+			, DATE_FORMAT(VI.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+			, ( SELECT  COUNT(*) AS CNT
+				FROM VIDEO_LIKE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	AND USER_ID = #{myUserId}
+			  ) AS `LIKE`
+			, ( SELECT COUNT(*) AS CNT
+			 	FROM VIDEO_FAVOURITE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	AND USER_ID = #{myUserId}
+			 	) AS FAVOURITE
+			, ( SELECT COUNT(*) AS CNT
+				FROM VIDEO_LIKE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	) AS LIKE_COUNT
+			, ( SELECT COUNT(*) AS CNT
+			 	FROM VIDEO_COMMENT
+			 	WHERE VIDEO_ID = #{videoId}
+			 	) AS COMMENT_COUNT
+		FROM VIDEO AS VI
+		WHERE VI.ID = #{videoId}
+	</select>
+
+	<select id="hashtagView" parameterType="map" resultType="box">
+		SELECT
+			T.ID
+			,T.NAME
+			,CASE WHEN  T.favorite = '0' THEN '0'
+				ELSE '1'
+			END favorite
+		FROM
+		(
+			SELECT
+				  H.ID
+				, H.NAME
+				, IFNULL(( SELECT COUNT(*) AS CNT FROM HASHTAG_FAVOURITE HF WHERE HF.HASHTAG_ID  = H.ID AND HF.USER_ID = #{userId}) , 0) AS favorite
+			FROM HASHTAG H
+			where H.ID  = #{hashtagId}
+		) T
+	</select>
+
+	<select id="videotagView" parameterType="map" resultType="box">
+		SELECT
+			  HV.ID
+			, HV.HASHTAG_ID
+			, HV.VIDEO_ID
+		FROM HASHTAG_VIDEO HV
+		WHERE HV.HASHTAG_ID = #{hashtagId}
+		AND HV.VIDEO_ID = #{videoId}
+	</select>
+
+	<select id="favouriteChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM HASHTAG_FAVOURITE HF
+		WHERE HF.HASHTAG_ID  = #{hashtagId}
+		AND HF.USER_ID = #{sBox.id}
+	</select>
+
+	<select id="favouriteView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, HASHTAG_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, REG_ID
+			, DATE_FORMAT(MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, MOD_ID
+			, 'FAVOURITE' AS MSG
+		FROM HASHTAG_FAVOURITE HF
+		WHERE HF.HASHTAG_ID  = #{hashtagId}
+		AND HF.USER_ID = #{sBox.id}
+	</select>
+
+
+
+	<select id="userHashtagList" parameterType="map" resultType="box">
+		SELECT
+			  U.ID
+			, U.USERNAME
+			, (SELECT COUNT(*)
+			   FROM FOLLOWER AS F
+			   WHERE RECEIVER_ID = U.ID) AS FOLLOWER
+			, (SELECT COUNT(*)
+			   FROM VIDEO  AS V
+			   WHERE V.USER_ID = U.ID) AS VIDEO_CNT
+		FROM USER AS U
+		WHERE U.USERNAME  LIKE CONCAT('%',#{keyword},'%')
+		<include refid="userHashtag" />
+	</select>
+
+	<insert id="favouriteInsert" parameterType="map">
+		INSERT INTO HASHTAG_FAVOURITE
+		(
+			  USER_ID
+			, HASHTAG_ID
+			, REG_DT
+			, REG_ID
+			, MOD_DT
+			, MOD_ID
+		) VALUES (
+			  #{sBox.id}
+			, #{hashtagId}
+			, now()
+			, #{sBox.id}
+			, now()
+			, #{sBox.id}
+		)
+	</insert>
+
+	<delete id="favouriteDel" parameterType="map">
+		DELETE FROM HASHTAG_FAVOURITE
+		WHERE HASHTAG_ID  =  #{hashtagId}
+		AND USER_ID = #{sBox.id}
+	</delete>
+
+</mapper>

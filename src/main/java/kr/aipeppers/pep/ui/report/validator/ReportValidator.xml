@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE form-validation PUBLIC
+	"-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.1//EN"
+	"http://jakarta.apache.org/commons/dtds/validator_1_1.dtd">
+
+<form-validation>
+	<formset>
+		<form name="repo.reportComment">
+			<field property="comment_id" depends="required ,integer">
+				<arg0 key="댓글id" resource="false" />
+			</field>
+			<field property="report_reason_title" depends="required">
+				<arg0 key="신고 제목" resource="false" />
+			</field>
+			<field property="parent_id" depends="required ,integer">
+				<arg0 key="상위 id" resource="false" />
+			</field>
+			<field property="type" depends="required">
+				<arg0 key="타입" resource="false" />
+			</field>
+		</form>
+
+		<form name="repo.reportVideo">
+			<field property="owner_id" depends="required ,integer">
+				<arg0 key="owenrid" resource="false" />
+			</field>
+			<field property="report_reason_title" depends="required">
+				<arg0 key="신고 제목" resource="false" />
+			</field>
+			<field property="video_id" depends="required , integer">
+				<arg0 key="비디오 id" resource="false" />
+			</field>
+		</form>
+
+		<form name="repo.reportVideo">
+			<field property="report_user_id" depends="required ,integer">
+				<arg0 key="신고id" resource="false" />
+			</field>
+		</form>
+
+		<form name="repo.reportPost">
+			<field property="post_id" depends="required ,integer">
+				<arg0 key="postId" resource="false" />
+			</field>
+			<field property="report_reason_title" depends="required">
+				<arg0 key="신고 제목" resource="false" />
+			</field>
+		</form>
+
+	</formset>
+</form-validation>

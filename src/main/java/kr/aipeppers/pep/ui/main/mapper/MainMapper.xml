@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="main.info">
+
+	<sql id="teamInfoSrch">
+		<where>
+				TM.TEAM_ID = #{teamId}
+		</where>
+	</sql>
+	<sql id="sboxChk">
+		 <if test='chkUser != "N"'>
+		 	AND TP2.USER_ID = #{sBox.id}
+		 </if>
+	</sql>
+
+	<select id="nextMatchInfoView" parameterType="map" resultType="box">
+		 SELECT
+			  MS.ID
+			, MS.LEAGUE_ID
+			, (SELECT CD_NM  FROM DTL_CD WHERE CD = MS.LEAGUE_ID )AS LEAGUE_INFO
+			, (SELECT CD_DESC  FROM DTL_CD WHERE CD = MS.LEAGUE_ID )AS LEAGUE_INFO_DETAIL
+			, MS.LEAGUE_DETAIL_ID
+			, (SELECT CD_NM  FROM DTL_CD WHERE CD = MS.LEAGUE_DETAIL_ID )AS ROUND_NM
+			, MVP_ID
+			, TICKETING_URL
+			, SEAT_URL
+			, STADIUM_ID
+			, (SELECT CD_NM  FROM DTL_CD WHERE CD = MS.STADIUM_ID )AS STADIUM
+			, MS.GUBUN
+			, MS.USE_YN
+			, MS.EVENT_YN
+			, DATE_FORMAT(MS.MATCH_DATE, '%Y-%m-%d %H:%m') AS MATCH_DATE
+			, MS.HOMETEAM_ID
+			, MS.AWAYTEAM_ID
+			, MS.HOME_SCORE
+			, MS.HOME_SCORE_DETAIL
+			, MS.AWAY_SCORE
+			, MS.STATUS
+			, MS.REG_ID
+			, DATE_FORMAT(MS.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, MS.MOD_ID
+			, DATE_FORMAT(MS.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, (SELECT CD_NM  FROM DTL_CD WHERE CD = MS.LEAGUE_DETAIL_ID )AS STADIUM
+			, MS.AWAY_SCORE_DETAIL
+			, CONCAT(MS.HOME_SCORE, ':' , MS.AWAY_SCORE) AS FINAL_SCORE
+		FROM MATCH_SCHEDULE AS MS
+		WHERE MATCH_DATE > NOW()
+		ORDER BY MATCH_DATE ASC
+		LIMIT 1
+	</select>
+
+	<select id="teamView" parameterType="String" resultType="box">
+		SELECT
+			  TM.TEAM_ID
+			, TM.REGION_NAME
+			, TM.OWNER
+			, TM.TEAM_NAME
+			, TM.TEAM_PIC_URL
+			, TM.TEAM_PIC_URL_SUB
+		FROM TEAM AS TM
+		<include refid="teamInfoSrch" />
+	</select>
+
+	<select id="bannerMediaList" parameterType="map" resultType="box">
+		SELECT
+			  B.ID
+			, B.TYPE_CD
+			, (SELECT CD_NM FROM DTL_CD CM WHERE CM.CD = B.TYPE_CD) AS TYPE_NM
+			, B.TITLE
+			, B.CONTENT_CD
+			, (SELECT CD_NM FROM DTL_CD CM WHERE CM.CD = B.CONTENT_CD) AS CONTENT_NM
+			, B.CONTENT
+			, B.LINK
+			, B.HITS
+			, B.DEL_YN
+			, B.USE_YN
+			, B.MAIN_YN
+			, B.POPUP_YN
+			, B.ORD
+			, B.THUMB
+			, B.POP_THUMB
+		FROM BOARD B
+		WHERE TYPE_CD  = #{bdType}
+		AND B.USE_YN = 'Y'
+		AND B.MAIN_YN = 'Y'
+		AND B.DEL_YN = 'N'
+		ORDER BY B.ORD DESC
+		LIMIT 10
+	</select>
+
+	<select id="popupEventList" parameterType="map" resultType="box">
+		SELECT
+			 ID
+			,IMAGE
+			,URL
+			,USE_YN
+		FROM APP_SLIDER
+		WHERE USE_YN = 'Y'
+	</select>
+
+	<select id="boardCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM BOARD AS BD
+		WHERE BD.TYPE_CD  = #{typeCd}
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+	</select>
+
+	<select id="showAppSliderList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, IMAGE
+			, URL
+			, USE_YN
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM APP_SLIDER
+		WHERE USE_YN = 'Y'
+	</select>
+
+	<select id="boardList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY A.ID ASC) AS RNUM
+			, A.ID
+			, A.TYPE_CD
+			, A.TITLE
+			, A.CONTENT_CD
+			, A.CONTENT
+			, A.LINK
+			, A.HITS
+			, A.DEL_YN
+			, A.USE_YN
+			, A.MAIN_YN
+			, A.POPUP_YN
+			, A.ORD
+			, A.THUMB
+			, A.POP_THUMB
+			, DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM BOARD AS A
+		WHERE TYPE_CD = #{typeCd}
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+	 	ORDER BY ORD DESC
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="notificationCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM NOTIFICATION
+		WHERE RECEIVER_ID = #{sBox.id}
+		AND ISREAD = 0
+	</select>
+
+	<select id="notificationIdList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+		FROM NOTIFICATION
+		WHERE RECEIVER_ID = #{sBox.id}
+		AND isRead = 0
+	</select>
+
+	<select id="notificationList" parameterType="map" resultType="box">
+		SELECT
+			  TN.ID
+			, TN.SENDER_ID
+			, TN.RECEIVER_ID
+			, TN.STRING
+			, TN.TYPE
+			, (CASE WHEN `TYPE` = 'post_updates' THEN (SELECT `TYPE` FROM POST WHERE ID = TN.POST_ID)
+					ELSE NULL
+			   END
+			  ) AS POST_TYPE
+			, TN.VIDEO_ID
+			, TN.POST_ID
+			, DATE_FORMAT(TN.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, TN.isRead
+			, (	 CASE WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, TN.REG_DT , NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, TN.REG_DT , NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TN.REG_DT , NOW()) <![CDATA[<]]>  60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, TN.REG_DT , NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TN.REG_DT , NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, TN.REG_DT , NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(TN.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(TN.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '년 전에 등록됨')
+				 END
+		 	   )AS DIFF_DATE
+		 	 , (SELECT ACTIVE FROM USER WHERE ID = TN.RECEIVER_ID) AS STATE
+		FROM NOTIFICATION AS TN
+		WHERE ID = #{id}
+	</select>
+
+	<select id="senderView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, ROLE
+			, ACTIVE
+		FROM USER
+		WHERE ID = #{senderId}
+	</select>
+
+<!-- 	<select id="mainYoutubeListCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM CONTENT_GROUP AS A
+		WHERE A.MAIN_YN = 'Y'
+		AND A.DEL_YN = 'N'
+		AND A.USE_YN = 'Y'
+		ORDER BY A.ORD DESC
+	</select> -->
+
+<!-- 	<select id="mainYoutubeList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY A.ID ASC) AS RNUM
+			, A.ID
+			, A.TYPE_CD
+			, A.TITLE
+			, A.DEL_YN
+			, A.USE_YN
+			, A.MAIN_YN
+			, A.ORD
+			, A.THUMB
+		    , (SELECT COUNT(*) FROM CONTENT AS B WHERE B.CONTENT_GROUP = A.ID ) AS YOUTUBE_CNT
+		FROM CONTENT_GROUP AS A
+		WHERE A.MAIN_YN = 'Y'
+		AND A.DEL_YN = 'N'
+		AND A.USE_YN = 'Y'
+		ORDER BY A.ORD DESC
+		<include refid="cmn.pageEnd" />
+	</select> -->
+
+	<!-- sns 관련 query -->
+	<select id="pepperPotoList" parameterType="map" resultType="box">
+		SELECT
+			  TB.ID
+			, TB.TYPE_CD
+			, TB.TITLE
+			, TB.CONTENT_CD
+			, TB.CONTENT
+			, TB.LINK
+			, TB.HITS
+			, TB.DEL_YN
+			, TB.USE_YN
+			, TB.MAIN_YN
+			, TB.POPUP_YN
+			, TB.ORD
+			, TB.THUMB
+			, TB.POP_THUMB
+			, TB.REG_ID
+			, DATE_FORMAT(TB.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM BOARD AS TB
+		WHERE  TYPE_CD = #{typeCd}
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+		AND MAIN_YN = 'Y'
+		LIMIT #{limit}
+	</select>
+
+	<select id="playerList" parameterType="map" resultType="box">
+		SELECT
+			  TP.ID
+			, TP.PLAYER_NAME
+			, TP.E_PLAYER_NAME
+			, TP.USER_ID
+			, TP.PLAYER_PIC_URL
+			, TP.BG_URL
+			, (SELECT PROFILE_PIC FROM USER WHERE ID = TP.USER_ID) AS PROFILE_PIC
+			, (SELECT PROFILE_PIC_SMALL FROM USER WHERE ID = TP.USER_ID) AS PROFILE_PIC_SMALL
+			, DATE_FORMAT(TP.JOIN_DATE, '%Y-%m-%d %H:%m:%s') AS JOIN_DATE
+			, TP.POSITION
+			, TP.KOVO_URL
+			, TP.ORD
+			, TP.BACK_NO
+			, TP.NATION
+			, DATE_FORMAT(TP.BIRTH_DATE, '%Y-%m-%d %H:%m:%s') AS BIRTH_DATE
+			, TP.HEIGHT
+			, TP.WEIGHT
+			, TP.EL_SCHOOL
+			, TP.MID_SCHOOL
+			, TP.HIGH_SCHOOL
+			, TP.UNIVERSITY
+			, TP.USE_YN
+			, TP.REG_ID
+			, DATE_FORMAT(TP.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			,
+			  <if test='chkUser != "N"'>
+				(CASE WHEN (SELECT COUNT(*)
+						  FROM PLAYER_FAVOURITE TPF
+						  WHERE TPF.PLAYER_ID = TP.ID
+						  AND TPF.USER_ID = #{sBox.id}
+						  ) > 0 THEN 'Y'
+					 WHEN (SELECT COUNT(*)
+					 	   FROM PLAYER_FAVOURITE TPF
+					 	   WHERE TPF.PLAYER_ID = TP.ID
+					 	   AND TPF.USER_ID = #{sBox.id}
+					 	   ) <![CDATA[<]]> 1 THEN 'N'
+			   END )
+			   AS BOOK_MARK_YN
+			   </if>
+   			  <if test='chkUser == "N"'>
+			    'N' AS BOOK_MARK_YN
+			   </if>
+			,
+			<if test='chkUser != "N"'>
+				(CASE  WHEN ( SELECT COUNT(*) AS CNT
+							  FROM PLAYER TP2
+							  LEFT JOIN GUEST_BOOK_READ TGBR
+							  ON TP2.ID = TGBR.PLAYER_ID
+							  WHERE DATEDIFF(NOW(), TP.CONTENT_MOD_DT) BETWEEN 0 AND 3
+							  AND (SELECT COUNT(*)
+								   FROM GUEST_BOOK_READ TGBR2
+								   WHERE TGBR2.USER_ID= #{sBox.id}) = 0) > 0 THEN 'Y'
+						 ELSE 'N'
+				   END ) AS NEW_YN
+			   </if>
+   			  <if test='chkUser == "N"'>
+				'N' AS NEW_YN
+			   </if>
+		FROM PLAYER TP
+		ORDER BY NEW_YN DESC, BOOK_MARK_YN DESC, RAND()
+	</select>
+
+	<select id="popupEventView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, TYPE_CD
+			, TITLE
+			, CONTENT
+			, LINK
+			, POP_THUMB
+		FROM BOARD
+		WHERE TYPE_CD = 'BD04'
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+		AND MAIN_YN = 'Y'
+		order by RAND()
+		LIMIT 1
+	</select>
+
+	<insert id="guestBookReadInsert" parameterType="map">
+		INSERT INTO GUEST_BOOK_READ (
+			  USER_ID
+			, CONTENT_ID
+			, REG_ID
+			, REG_DT
+		)VALUES (
+			  #{sBox.id}
+			, #{contentId}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+</mapper>

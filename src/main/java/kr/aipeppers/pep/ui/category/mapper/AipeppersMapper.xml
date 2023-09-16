@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="category.aipeppers">
+
+	<sql id="playerSrch">
+		<where>
+			<if test='type != null and type != ""'>
+				PY.POSITION = #{type}
+			</if>
+		</where>
+	</sql>
+
+	<sql id="merchandiseSrch">
+		<where>
+			<if test='type != null and type != "" and type != "ALL"'>
+				AND MC.TYPE_CD = #{type}
+			</if>
+				AND USE_YN = 'Y'
+				AND DEL_YN = 'N'
+		</where>
+	</sql>
+
+	<sql id="teamInfoSrch">
+		<where>
+			<if test='teamId != null and teamId != ""'>
+				TM.TEAM_ID = #{teamId}
+			</if>
+		</where>
+	</sql>
+
+	<select id="playerList" parameterType="map" resultType="box">
+		SELECT
+		      PY.ID
+			, PY.PLAYER_NAME
+			, PY.E_PLAYER_NAME
+			, PY.USER_ID
+			, PY.PLAYER_PIC_URL
+			, PY.BG_URL
+			, DATE_FORMAT(PY.JOIN_DATE,'%Y-%m-%d') AS JOIN_DATE
+			, PY.POSITION
+			, PY.KOVO_URL
+			, PY.ORD
+			, PY.BACK_NO
+			, PY.NATION
+			, DATE_FORMAT(PY.BIRTH_DATE,'%Y-%m-%d') AS BIRTH_DATE
+			, PY.HEIGHT
+			, PY.WEIGHT
+			, PY.EL_SCHOOL
+			, PY.MID_SCHOOL
+			, PY.HIGH_SCHOOL
+			, PY.UNIVERSITY
+			, PY.USE_YN
+			, PY.REG_ID
+			, DATE_FORMAT(PY.REG_DT,'%Y-%m-%d %H:%i:%s') AS REG_DT
+			, PY.MOD_ID
+			, DATE_FORMAT(PY.MOD_DT,'%Y-%m-%d %H:%i:%s') AS MOD_DT
+		FROM PLAYER AS PY
+		<include refid="playerSrch" />
+	</select>
+
+	<select id="playerDetailView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, PLAYER_NAME
+			, E_PLAYER_NAME
+			, PLAYER_PIC_URL
+			, BG_URL
+			, DATE_FORMAT(JOIN_DATE,'%Y-%m-%d') AS JOIN_DATE
+			, POSITION
+			, KOVO_URL
+			, ORD
+			, BACK_NO
+			, NATION
+			, DATE_FORMAT(BIRTH_DATE,'%Y-%m-%d') AS BIRTH_DATE
+			, HEIGHT
+			, WEIGHT
+			, EL_SCHOOL
+			, MID_SCHOOL
+			, HIGH_SCHOOL
+			, UNIVERSITY
+		FROM PLAYER
+		WHERE ID = #{playerId}
+		AND USE_yn ='Y'
+	</select>
+
+	<select id="merchandiseList" parameterType="map" resultType="box">
+		SELECT
+			  MC.ID
+			, MC.TYPE_CD
+			, MC.TITLE
+			, MC.CONTENT
+			, MC.DISCOUNT_RATE
+			, MC.PRICE
+			, MC.GIFT_URL
+			, MC.IMAGE
+			, MC.IMAGE1
+			, MC.IMAGE2
+			, MC.IMAGE3
+			, MC.IMAGE4
+			, MC.IMAGE5
+			, MC.AVAILABLE_CD
+			, MC.DEL_YN
+			, MC.USE_YN
+			, MC.ORD
+			, MC.REG_ID
+			, DATE_FORMAT(MC.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, MC.MOD_ID
+			, DATE_FORMAT(MC.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MC.TYPE_CD) AS TYPE_NM
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MC.AVAILABLE_CD) AS AVAILABLE_NM
+		FROM MERCHANDISE AS MC
+		<include refid="merchandiseSrch" />
+	</select>
+
+	<select id="leagueScheduleList" parameterType="map" resultType="box">
+		SELECT
+			  MS.ID
+			, MS.LEAGUE_ID
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.LEAGUE_ID )AS LEAGUE_INFO
+			, (SELECT CD_DESC  FROM CD_MST CM WHERE CD_ID = MS.LEAGUE_ID )AS LEAGUE_INFO_DETAIL
+			, MS.LEAGUE_DETAIL_ID
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.LEAGUE_DETAIL_ID )AS ROUND_NM
+			, MS.MVP_ID
+			, MS.TICKETING_URL
+			, MS.SEAT_URL
+			, MS.STADIUM_ID
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.STADIUM_ID )AS STADIUM
+			, MS.GUBUN
+			, MS.USE_YN
+			, MS.EVENT_YN
+			, DATE_FORMAT(MS.MATCH_DATE, '%Y-%m-%d %H:%i:%s') AS MATCH_DATE
+			, MS.HOMETEAM_ID
+			, MS.AWAYTEAM_ID
+			, MS.HOME_SCORE
+			, MS.HOME_SCORE_DETAIL
+			, MS.AWAY_SCORE
+			, MS.STATUS
+			, MS.REG_ID
+			, DATE_FORMAT(MS.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, MS.MOD_ID
+			, DATE_FORMAT(MS.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.LEAGUE_DETAIL_ID )AS STADIUM
+			, MS.AWAY_SCORE_DETAIL
+		FROM MATCH_SCHEDULE AS MS
+		WHERE MS.LEAGUE_ID = (SELECT LEAGUE_ID FROM MATCH_SCHEDULE WHERE MATCH_DATE > NOW() LIMIT 1)
+		AND MS.LEAGUE_DETAIL_ID  = (SELECT LEAGUE_DETAIL_ID FROM MATCH_SCHEDULE WHERE MATCH_DATE > NOW() LIMIT 1)
+		ORDER BY STATUS ASC, MATCH_DATE ASC
+	</select>
+	<select id="getScheduleDetail" parameterType="map" resultType="box">
+		SELECT
+			MS.ID,
+			MS.GUBUN,
+			DATE_FORMAT(MS.MATCH_DATE, '%Y-%m-%d %H:%i:%s') AS MATCH_DATE,
+		  	(SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.STADIUM_ID ) AS STADIUM_NM,
+		 	MS.HOMETEAM_ID,
+		 	MS.AWAYTEAM_ID
+		FROM MATCH_SCHEDULE MS
+		WHERE MS.ID = #{id}
+	</select>
+
+	<select id="leaguesList" parameterType="map" resultType="box">
+		SELECT
+			ID
+		    ,CD_ID
+		    ,CD_NM
+		    ,CD_DESC
+		    ,UP_CD_ID
+		    ,ORD
+		FROM CD_MST
+
+		WHERE USE_YN ='Y'
+			AND UP_CD_ID IN ('LE00', 'AL00', 'CU00','ETC00')
+	</select>
+
+	<select id="teamView" parameterType="String" resultType="box">
+		SELECT
+			  TM.TEAM_ID
+			, TM.REGION_NAME
+			, TM.OWNER
+			, TM.TEAM_NAME
+			, TM.TEAM_PIC_URL
+			, TM.TEAM_PIC_URL_SUB
+		FROM TEAM AS TM
+		<include refid="teamInfoSrch" />
+	</select>
+
+	<select id="teamViewDetail" parameterType="String" resultType="box">
+		SELECT
+			  TM.TEAM_ID
+			, TM.REGION_NAME
+			, TM.OWNER
+			, TM.TEAM_NAME
+			, TM.E_TEAM_NAME
+			, TM.TEAM_PIC_URL
+			, TM.TEAM_PIC_URL_SUB
+		FROM TEAM AS TM
+		<include refid="teamInfoSrch" />
+	</select>
+	<select id="teamViewBanner" parameterType="String" resultType="box">
+		SELECT
+			  TM.TEAM_ID
+			, TM.REGION_NAME
+			, TM.OWNER
+			, TM.TEAM_NAME
+			, TM.TEAM_PIC_URL
+		FROM TEAM AS TM
+		<include refid="teamInfoSrch" />
+	</select>
+	<select id="teamViewMatch" parameterType="String" resultType="box">
+		SELECT
+			  TM.TEAM_ID
+			, TM.REGION_NAME
+			, TM.OWNER
+			, TM.TEAM_NAME
+			, TM.TEAM_PIC_URL
+			, TM.TEAM_PIC_URL_SUB
+		FROM TEAM AS TM
+		<include refid="teamInfoSrch" />
+	</select>
+	<select id="getVoteMatch" parameterType="map" resultType="box">
+		SELECT
+			MS.ID,
+			MS.GUBUN,
+			DATE_FORMAT(MS.MATCH_DATE, '%Y-%m-%d %H:%i:%s') AS MATCH_DATE,
+			MS.EVENT_YN,
+			MS.STADIUM_ID,
+		  	(SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.STADIUM_ID ) AS STADIUM,
+		 	MS.HOMETEAM_ID,
+		 	MS.AWAYTEAM_ID
+		FROM MATCH_SCHEDULE MS
+
+		WHERE MS.EVENT_YN = 'Y'
+		AND MS.USE_YN = 'Y'
+		AND STATUS !='MS03'
+		AND MS.ID = #{matchId}
+	</select>
+
+
+	<select id="nextMatchBanner" parameterType="map" resultType="box">
+			SELECT
+			  MS.ID
+			, MS.LEAGUE_ID
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.LEAGUE_ID )AS LEAGUE_INFO
+			, MS.LEAGUE_DETAIL_ID
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.LEAGUE_DETAIL_ID )AS ROUND_NM
+			, MS.MVP_ID
+			, MS.TICKETING_URL
+			, MS.SEAT_URL
+			, MS.STADIUM_ID
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = MS.STADIUM_ID )AS STADIUM
+			, MS.GUBUN
+			, MS.USE_YN
+			, MS.EVENT_YN
+			, DATE_FORMAT(MS.MATCH_DATE, '%Y-%m-%d %H:%i:%s') AS MATCH_DATE
+			, MS.HOMETEAM_ID
+			, MS.AWAYTEAM_ID
+			, MS.HOME_SCORE
+			, MS.AWAY_SCORE
+			, MS.STATUS
+			, MS.REG_ID
+			, DATE_FORMAT(MS.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, MS.MOD_ID
+			, DATE_FORMAT(MS.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, IF (MS.HOME_SCORE > MS.AWAY_SCORE, 'true', 'false') AS HOME_WIN
+			, CONCAT(MS.HOME_SCORE, ':', MS.away_score) AS FINAL_SCORE
+		FROM MATCH_SCHEDULE AS MS
+		WHERE MATCH_DATE >= NOW()
+		AND USE_YN = 'Y'
+		ORDER BY MATCH_DATE ASC
+		LIMIT 1
+	</select>
+
+	<select id="noticeCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM BOARD AS BD
+		WHERE BD.TYPE_CD  = #{typeCd}
+		AND BD.DEL_YN = 'N'
+	</select>
+
+	<select id="noticeList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY BD.ID ASC) AS RNUM
+			, BD.ID
+			, BD.TITLE
+			, BD.CONTENT_CD
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = BD.CONTENT_CD) AS CONTENT_NM
+			, DATE_FORMAT(BD.REG_DT, '%Y-%m-%d %H:%i:%s')as REG_DT
+		FROM BOARD AS BD
+		WHERE BD.TYPE_CD  = #{typeCd}
+		AND BD.DEL_YN = 'N'
+		<include refid="cmn.pageEnd" />
+	</select>
+
+
+	<select id="eventCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM BOARD AS BD
+		WHERE BD.TYPE_CD  = #{typeCd}
+		AND BD.DEL_YN = 'N'
+	</select>
+
+	<select id="eventList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY BD.ID ASC) AS RNUM
+			, BD.ID
+			, BD.TITLE
+			, BD.CONTENT
+			, BD.LINK
+			, BD.THUMB
+			, BD.POP_THUMB
+			, DATE_FORMAT(BD.REG_DT, '%Y-%m-%d %H:%i:%s')as REG_DT
+		FROM BOARD AS BD
+		WHERE BD.TYPE_CD  = #{typeCd}
+		AND BD.DEL_YN = 'N'
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="noticeDetailView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, TITLE
+			, CONTENT_CD
+			, CONTENT
+			, HITS
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s')as REG_DT
+		FROM BOARD
+		WHERE ID = #{id}
+	</select>
+
+<!-- 	<select id="noticeDetailView" parameterType="String" resultType="box"> -->
+<!-- 		SELECT -->
+<!-- 			  BD.ID -->
+<!-- 			, BD.TITLE -->
+<!-- 			, BD.CONTENT_CD -->
+<!-- 			, (SELECT CD_NM  FROM CD_MST CM WHERE CD_ID = BD.CONTENT_CD) AS CONTENT_NM -->
+<!-- 			, BD.CREATED_AT -->
+<!-- 		FROM BOARD AS BD -->
+<!-- 		WHERE BD.CONTENT_CD  = #{contentType} -->
+<!-- 		AND BD.DEL_YN = 'N' -->
+<!-- 	</select> -->
+
+<!-- 	<select id="eventLuckyDrawList" parameterType="map" resultType="box"> -->
+<!-- 		<include refid="cmn.pageStr" /> -->
+<!-- 			select id ,A.del_yn as del_yn ,A.event_name as event_name ,A.start_dt as start_dt, A.end_dt as end_dt,  @ROWNUM:=@ROWNUM+1 AS RNUM from  luckydraws A ,(SELECT @ROWNUM:=0) AS R -->
+<!-- 			where A.del_yn = 'N' -->
+<!-- 		<include refid="cmn.pageEnd" /> -->
+<!-- 	</select> -->
+</mapper>

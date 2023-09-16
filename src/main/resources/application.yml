@@ -1,0 +1,170 @@
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+       
+---
+spring:
+  datasource:
+    hikari:
+      jdbc-url: jdbc:mariadb://127.0.0.1:13306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
+      driver-class-name: org.mariadb.jdbc.Driver
+      username: peper
+      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
+      password: peperdb123
+      maximum-pool-size: 7
+      max-lifetime: 1600000
+      connection-timeout: 3000
+  #redis:
+    #host: 127.0.0.1
+    #port: 6379
+  application:
+    name: ui
+  devtools:
+    livereload:
+      enabled: true
+    restart:
+      enabled: false
+  output:
+    ansi:
+      enabled: always
+  jackson.serialization.indent_output: false
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10000MB
+      max-request-size: 10000MB
+  mvc.pathmatch.matching-strategy: ant-path-matcher
+  main:
+    allow-bean-definition-overriding: true
+    allow-circular-references: true
+
+server:
+  port: 8052
+  host:
+    name: localhost
+  system:
+    name: ${HOSTNAME:dev}
+  max-http-header-size: 100KB
+  servlet:
+    context-path: /
+    encoding:
+      enabled: true
+      charset: UTF-8
+      force: true
+      
+pep:
+  host: 
+    int: 127.0.0.1
+    ext: 127.0.0.1
+swagger:
+  host: 127.0.0.1:8051
+server-file:
+  save-root-path: /pep_shared/
+  aes-iv: 2fd16e0a9453468d
+  aes-key-202010: eb6c6f3ec827422e
+  
+scheduled:
+  yn: N
+  server.ip: 10.10.10.69 #TODO: 실제  서버주소 변경
+  
+cors:
+  hosts:
+    allows: none
+#    allows: http://www.pepper.com, http://admin.pepper.com:8800
+
+file:
+  path:
+    root: /upload/files/
+  ext: zip,xlsx,xls,ppt,pptx,doc,docx,jpg,jpeg,gif,png,bmp,pdf,txt,hwp,sql
+  img.ext: jpg,jpeg,gif,png,bmp
+  upload.img.path: /var/www/html/api/app/webroot/uploads/images
+  max.cnt: 10
+  max.size: 10000000
+
+user:
+  reset-pw: p@ssw0rd!
+  session.timeout: 300
+excel:
+  max.row: 10000
+paginate:
+  page-unit: 10
+  page-size: 20
+  return-max-row: 100
+
+logbook:
+  exclude:
+    - /actuator/**
+    - /v2/api-docs/**
+    - /v3/api-docs/**
+    - /swagger-ui/**
+    - /swagger-resources/**
+    - /
+  #filter.form-request-mode: parameter
+logging:
+  level.org.springframework.boot.autoconfigure: ERROR
+  config: classpath:logging/logback-${spring.config.activate.on-profile}.xml
+  pattern:
+    console: "[%d{HH:mm:ss.SSS}] [%thread{40}] %clr(%-5level) %clr(%logger{36}.%M:%L){cyan} | %msg%n%ex"
+  charset:
+    file: UTF-8
+  file-path: /logs/pepper/ui/
+
+log:
+  aspect: BEFORE #로그출력 방법 : BEFORE, AFTER, BOTH, NONE
+  except:
+    method: CmnController.msgList,CmnController.cdList,CmnController.helpList,MainController.sessionInfo #Controller 출력 제외 Method
+
+---
+spring:
+  config: 
+    activate:
+      on-profile: dev
+  datasource:
+    hikari:
+      jdbc-url: jdbc:mariadb://10.10.10.90:3306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
+      username: peper
+      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
+      password: peperdb123
+      
+server:
+  port: 8052
+  host:
+    name: pep_ui_dev
+  servlet:
+    context-path: /
+pep:
+#TODO : 주소 변경 필요
+  host: 
+    int: 10.10.11.44
+    ext: api.aimeplz.com
+swagger:
+#TODO : 개발계 환경에서는 PORT 없이 도메인으로 라우팅된다. 포트를 제거해야함
+#  host: ${pep.host.ext}:${server.port}
+  host: ${pep.host.ext}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    hikari:
+      jdbc-url: jdbc:mariadb://10.10.10.90:3306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
+      username: peper
+      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
+      password: peperdb123
+server:
+  port: 8052
+  host:
+    name: pep_ui_prod
+  servlet:
+    context-path: /
+pep:
+  host: 
+    int: 10.10.11.44
+    ext: prod.pepper.com
+swagger:
+  host: ${pep.host.ext}

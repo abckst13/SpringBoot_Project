@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false" scan="true" scanPeriod="30 seconds">
+	<include resource="org/springframework/boot/logging/logback/defaults.xml" />
+	<include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+	<property name="PROFILE" value="dev" />
+	<property name="SERVER" value="ui" />
+	<property name="LOG_DIR" value="/logs/pepper" />
+
+	<appender name="CONSOLE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_DIR}/${SERVER}/${PROFILE}/console.log</file>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>[%d{HH:mm:ss.SSS}] [%thread{40}] %-5level %logger{36}.%M %L | %msg%n%ex</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_DIR}/${SERVER}/${PROFILE}/old/console_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<maxHistory>10</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_DIR}/${SERVER}/${PROFILE}/error.log</file>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>[%d{HH:mm:ss.SSS}] [%thread{40}] %-5level %logger{36}.%M %L | %msg%n%ex</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_DIR}/${SERVER}/${PROFILE}/old/error_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="API_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_DIR}/${SERVER}/${PROFILE}/api.log</file>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>[%d{HH:mm:ss.SSS}] %msg%n</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_DIR}/${SERVER}/${PROFILE}/old/api_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="QUERY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_DIR}/${SERVER}/${PROFILE}/query.log</file>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>[%d{HH:mm:ss.SSS}] [%thread{40}] %-5level %logger{36}.%M %L | %msg%n%ex</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_DIR}/${SERVER}/${PROFILE}/old/query_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_DIR}/${SERVER}/${PROFILE}/access.log</file>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>[%d{HH:mm:ss.SSS}] [%thread{40}] %-5level %logger{36}.%M %L | %msg%n%ex</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_DIR}/${SERVER}/${PROFILE}/old/access_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<appender name="ACTION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${LOG_DIR}/${SERVER}/${PROFILE}/action.log</file>
+		<encoder>
+			<charset>UTF-8</charset>
+			<pattern>[%d{HH:mm:ss.SSS}] [%thread{40}] %-5level %logger{36}.%M %L | %msg%n%ex</pattern>
+		</encoder>
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<fileNamePattern>${LOG_DIR}/${SERVER}/${PROFILE}/old/action_%d{yyyy-MM-dd}_%i.log</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>100MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+			<maxHistory>30</maxHistory>
+		</rollingPolicy>
+	</appender>
+
+	<!--  ERROR -->
+	<logger name="kr.aipeppers.pep.core.exception" level="DEBUG">
+		<appender-ref ref="ERROR_FILE" />
+	</logger>
+
+	<!--  API -->
+	<logger name="org.zalando.logbook" level="TRACE" additivity="false">
+		<appender-ref ref="API_FILE" />
+	</logger>
+
+	<!--  QUERY -->
+	<logger name="kr.aipeppers.pep.core.mybatis" level="DEBUG">
+		<appender-ref ref="QUERY_FILE" />
+	</logger>
+
+	<!-- ACCESS  -->
+	<logger name="kr.aipeppers.pep.core.interceptor.DefaultInterceptor" level="DEBUG" additivity="false">
+		<appender-ref ref="ACCESS_FILE" />
+	</logger>
+
+	<!--                               -->
+	<!-- 기본 로거 설정 -->
+	<!--                               -->
+	<logger name="io.lettuce" level="INFO" />
+	<logger name="io.netty" level="INFO" />
+
+	<!-- spring boot framework -->
+	<logger name="org.springframework.web" level="DEBUG" />
+	<logger name="org.hibernate.stat" level="DEBUG" />
+	<logger name="org.hibernate.hql.internal" level="ERROR" />
+	<logger name="org.hibernate.engine" level="ERROR" />
+	<logger name="sql" level="ERROR" />
+	<logger name="jdbc" level="OFF" />
+	<logger name="log4jdbc.log4j2" level="OFF" />
+	<logger name="io.swagger.models.parameters.AbstractSerializableParameter" level="ERROR" />
+
+	<logger name="kr.aipeppers.pep.core" level="DEBUG" />
+	<logger name="kr.aipeppers.pep.ui" level="DEBUG" />
+
+	<root level="INFO">
+		<appender-ref ref="CONSOLE" />
+		<appender-ref ref="CONSOLE_FILE" />
+	</root>
+
+</configuration>

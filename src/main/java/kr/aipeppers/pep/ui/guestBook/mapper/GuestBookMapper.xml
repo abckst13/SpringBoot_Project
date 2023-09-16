@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="guestbook.info">
+
+	<select id="guestBookView" parameterType="map" resultType="box">
+		SELECT
+			  TP.ID AS PLAYER_ID
+			, (SELECT USERNAME FROM TB_USER AS U WHERE TP.USER_ID = U.ID) AS PLAYER_NM
+			, TP.CONTENT
+			, TP.USE_YN
+			, (SELECT COUNT(*) AS CNT FROM TB_GUEST_BOOK_COMMENT GBC WHERE GBC.PLAYER_ID = TP.ID) AS COMMENT_CNT
+			, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d %H:%m:%s') AS CONTENT_MOD_DT
+			, (	 CASE WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, TP.CONTENT_MOD_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, TP.CONTENT_MOD_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TP.CONTENT_MOD_DT, NOW()) <![CDATA[<]]>  60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, TP.CONTENT_MOD_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TP.CONTENT_MOD_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, TP.CONTENT_MOD_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(TP.CONTENT_MOD_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(TP.CONTENT_MOD_DT, '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM TB_PLAYER AS TP
+		WHERE TP.ID = #{playerId}
+		AND TP.USE_YN = 'Y'
+	</select>
+
+	<select id="commentList" parameterType="map" resultType="box">
+		SELECT
+			  GBC.ID
+			, GBC.USER_ID
+			, GBC.PLAYER_ID
+			, (SELECT USERNAME FROM TB_USER AS U WHERE GBC.USER_ID = U.ID) AS USER_NM
+			, GBC.COMMENT
+			, GBC.DEL_YN
+			, GBC.USE_YN
+			, (	 CASE WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, GBC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, GBC.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, GBC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, GBC.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, GBC.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, GBC.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(GBC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW(), '%Y-%m-%d')), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+			, DATE_FORMAT(GBC.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM TB_GUEST_BOOK_COMMENT AS GBC
+		WHERE GBC.PLAYER_ID = #{playerId}
+		AND GBC.DEL_YN = 'N'
+		AND GBC.USE_YN = 'Y'
+	</select>
+
+	<select id="playerView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, PLAYER_NAME
+			, E_PLAYER_NAME
+			, USER_ID
+			, PLAYER_PIC_URL
+			, BG_URL
+			, DATE_FORMAT(JOIN_DATE, '%Y-%m-%d %H:%m:%s') AS JOIN_DATE
+			, POSITION
+			, BACK_NO
+			, USE_YN
+		FROM TB_PLAYER
+		WHERE ID = #{playerId}
+	</select>
+
+	<select id="userView" parameterType="map" resultType="box">
+		SELECT
+			  U.ID
+			, U.ACTIVE
+			, U.USERNAME
+			, U.ROLE
+			, U.GRADE
+			, U.PROFILE_PIC
+			, U.PROFILE_PIC_SMALL
+			, DATE_FORMAT(U.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM TB_USER AS U
+		WHERE U.ID = #{userId}
+	</select>
+
+	<select id="guestBookContentChk" parameterType="map" resultType="box">
+		SELECT TP.USER_ID
+		FROM TB_PLAYER AS TP
+		WHERE TP.ID = #{player_id}
+		AND TP.USE_YN = 'Y'
+	</select>
+
+	<select id="guestBookDelChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM  TB_GUEST_BOOK_COMMENT
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+		AND DEL_YN = 'Y'
+	</select>
+
+	<select id="guestBookChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM  TB_GUEST_BOOK_COMMENT
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+		AND DEL_YN = 'N'
+	</select>
+
+	<insert id="guestBookCmmInsert" parameterType="map">
+		INSERT INTO TB_GUEST_BOOK_COMMENT (
+			  USER_ID
+			, COMMENT
+			, PLAYER_ID
+			, DEL_YN
+			, USE_YN
+			, REG_ID
+			, REG_DT
+		)VALUES(
+			  #{sBox.id}
+			, #{comment}
+			, #{playerId}
+			, 'N'
+			, 'Y'
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<update id="guestBookUpdate" parameterType="map">
+		UPDATE TB_PLAYER AS TP
+			SET   TP.CONTENT = #{content}
+				, TP.CONTENT_MOD_DT = NOW()
+		WHERE TP.USER_ID = #{sBox.id}
+		AND TP.USE_YN = 'Y'
+	</update>
+
+	<update id="guestBookCmmUpdate" parameterType="map">
+		UPDATE TB_GUEST_BOOK_COMMENT AS TGBC
+			SET   TGBC.COMMENT = #{comment}
+				, TGBC.MOD_DT = NOW()
+		WHERE TGBC.ID = #{commentId}
+		AND TGBC.USER_ID = #{sBox.id}
+		AND TGBC.USE_YN = 'Y'
+		AND TGBC.DEL_YN = 'N'
+	</update>
+
+	<update id="guestBookDel" parameterType="map">
+		UPDATE TB_GUEST_BOOK_COMMENT AS TGBC
+			SET   TGBC.DEL_YN = 'Y'
+				, TGBC.USE_YN = 'N'
+		WHERE TGBC.ID = #{commentId}
+		AND TGBC.USER_ID = #{sBox.id}
+	</update>
+
+	<delete id="guestBookLogDel" parameterType="map">
+		DELETE FROM TB_GUEST_BOOK_READ
+		WHERE PLAYER_ID  = ( SELECT ID FROM TB_PLAYER TP WHERE TP.USER_ID = #{sBox.id} );
+	</delete>
+</mapper>

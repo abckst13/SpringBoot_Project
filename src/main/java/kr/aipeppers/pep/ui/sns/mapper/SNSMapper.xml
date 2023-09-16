@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="sns.info">
+
+
+	<!-- SNS 검색조건 -->
+	<sql id="snsSrch">
+		<where>
+			DEL_YN = 'N'
+			AND USE_YN = 'Y'
+			<choose>
+				<when test="TYPE_CD == 'ALL'">
+					AND (TYPE_CD = 'SN01' OR TYPE_CD = 'SN02' OR TYPE_CD = 'SN03' OR TYPE_CD = 'SN04')
+				</when>
+				<otherwise>
+					AND TYPE_CD = #{typeCd}
+				</otherwise>
+			</choose>
+		</where>
+	</sql>
+	<!-- Sns 리스트 -->
+	<select id="showSnsList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			ROW_NUMBER() OVER(ORDER BY BOARD.ID ASC) AS RNUM,
+			ID,
+			TYPE_CD,
+			TITLE,
+			CONTENT_CD,
+			CONTENT,
+			LINK,
+			HITS,
+			DEL_YN,
+			USE_YN,
+			MAIN_YN,
+			POPUP_YN,
+			ORD,
+			THUMB,
+			POP_THUMB,
+			REG_ID,
+			DATE_FORMAT(REG_DT, '%Y-%m-%d %T.%f') AS REG_DT,
+			MOD_ID,
+			MOD_DT
+		FROM BOARD BOARD
+		<include refid="snsSrch" />
+		<include refid="cmn.pageEnd" />
+	</select>
+	<select id="showSnsCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) as cnt
+		FROM BOARD BOARD
+		<include refid="snsSrch" />
+	</select>
+</mapper>

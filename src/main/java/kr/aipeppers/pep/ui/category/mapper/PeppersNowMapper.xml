@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="category.peppernow">
+
+	<sql id="peppernowSrch">
+		<where>
+			<if test='type != "ALL" and type != null and type != ""'>
+				AND BD.TYPE_CD = #{type}
+			</if>
+				AND USE_YN = 'Y'
+				AND DEL_YN = 'N'
+		</where>
+	</sql>
+
+	<select id="pepperNowList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY BD.ID ASC) AS RNUM
+			, BD.ID
+			, BD.TYPE_CD
+			, BD.TITLE
+			, BD.CONTENT_CD
+			, BD.CONTENT
+			, BD.LINK
+			, BD.HITS
+			, BD.DEL_YN
+			, BD.USE_YN
+			, BD.MAIN_YN
+			, BD.POPUP_YN
+			, BD.ORD
+			, BD.THUMB
+			, BD.POP_THUMB
+			, BD.REG_ID
+			, DATE_FORMAT(REG_DT,'%Y-%m-%d %H:%i:%s') AS REG_DT
+			, BD.MOD_ID
+			, DATE_FORMAT(MOD_DT,'%Y-%m-%d %H:%i:%s') AS MOD_DT
+		FROM BOARD BD
+		<include refid="peppernowSrch" />
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="pepperNowCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BOARD BD
+		<include refid="peppernowSrch" />
+	</select>
+</mapper>

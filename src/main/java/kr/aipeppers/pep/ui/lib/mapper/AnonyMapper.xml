@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="anony">
+
+	<sql id="duplicateChk">
+		<where>
+			<if test='username != null and username != ""'>
+				AND USERNAME = #{username}
+			</if>
+			<if test='email != null and email != ""'>
+				AND EMAIL = #{email}
+			</if>
+		</where>
+	</sql>
+
+	<!-- 로그인 -->
+	<select id="userView" parameterType="map" resultType="box">
+		SELECT
+			  U.ID
+			, U.DEVICE_TOKEN
+			, U.AUTH_TOKEN
+			, U.EMAIL
+			, U.LOCK_CNT
+			, U.PASSWORD
+			, U.PHONE
+			, U.ACTIVE
+			, U.ACTIVE_REASON
+			, U.ACTIVE_REASON_DETAIL
+			, U.USERNAME
+			, U.ROLE
+			, U.POINT
+			, U.GRADE
+			, U.FIRST_NAME
+			, U.LAST_NAME
+			, U.GENDER
+			, U.BIO
+			, U.WEBSITE
+			, DATE_FORMAT(U.DOB, '%Y-%m-%d %H:%m:%s') AS DOB
+			, U.SOCIAL_ID
+			, U.PROFILE_PIC
+			, U.PROFILE_PIC_SMALL
+			, U.SOCIAL
+			, U.TOKEN
+			, U.LAT
+			, U.LONG
+			, U.ONLINE
+			, U.VERIFIED
+			, U.VERSION
+			, U.DEVICE
+			, U.IP
+			, U.CITY
+			, U.COUNTRY
+			, U.CITY_ID
+			, U.STATE_ID
+			, U.COUNTRY_ID
+			, U.WALLET
+			, U.PAYPAL
+			, U.RESET_WALLET_DATETIME
+			, U.FB_ID
+			, DATE_FORMAT(U.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, U.PASS_CHN_YN
+			, U.PASS_MODIFY_DATETIME
+		FROM `USER` U
+		WHERE U.EMAIL = #{email}
+		AND U.PASSWORD = #{password}
+		AND ACTIVE NOT IN (0,2)
+	</select>
+
+
+	<select id="apiVersionChk" parameterType="map" resultType="box">
+		SELECT
+			  VALUE
+			, ATTR_01 AS FORCE_YN
+			, ATTR_02 AS UPDATE_LINK
+		FROM API_SETTING
+		WHERE TYPE = #{appType}
+	</select>
+
+	<!-- 코드 전체 목록 -->
+	<select id="cdAllList" parameterType="map" resultType="box">
+		SELECT
+			B.GRP_CD_NM
+			, B.GRP_DESC
+			, A.GRP_CD
+			, A.CD
+			, A.CD_NM
+			, A.CD_DESC
+			, A.CD_VAL1
+			, A.CD_VAL2
+			, A.CD_VAL3
+			, A.CD_VAL4
+			, A.CD_VAL5
+			, A.USE_YN
+		FROM
+			CD A
+			LEFT JOIN
+			GRP_CD B
+			ON A.GRP_CD = B.GRP_CD
+		ORDER BY
+			A.GRP_CD ASC, A.ORD ASC
+	</select>
+
+	<!-- 코드 트리 목록 -->
+	<select id="cdTreeList" parameterType="map" resultType="box">
+		WITH TEMP_CD AS /*NO_LOG*/
+			(
+			SELECT
+					  '_ROOT_' AS GRP_CD
+					, '최상위' AS GRP_CD_NM
+					, A.GRP_CD AS CD
+					, A.GRP_CD AS TREE_KEY
+					, A.GRP_CD_NM || ' (' || (SELECT CAST(COUNT(*) AS VARCHAR(10)) AS CNT FROM CD WHERE GRP_CD = A.GRP_CD) || ')' AS CD_NM
+					, REGEXP_REPLACE(A.GRP_DESC, '(*CRLF)', 'NNN') AS CD_DESC
+					, 'Y' AS USE_YN
+					, '사용' AS USE_YN_NM
+					, '' AS CD_VAL1
+					, '' AS CD_VAL2
+					, '' AS CD_VAL3
+					, '' AS CD_VAL4
+					, '' AS CD_VAL5
+					, (SELECT CAST(COUNT(*) AS VARCHAR(10)) FROM CD WHERE GRP_CD = A.GRP_CD) AS CHILD_CNT
+					, 0 AS ORD
+					, 0 AS LV
+					, 'false' AS LEAF
+					, 'true' AS EX
+			FROM GRP_CD A
+			UNION ALL
+			SELECT
+					  A.GRP_CD
+					, (SELECT GRP_CD_NM FROM GRP_CD WHERE GRP_CD = A.GRP_CD) AS GRP_CD_NM
+					, A.CD
+					, A.GRP_CD || '_' || A.CD AS TREE_KEY
+					, A.CD_NM
+					, REGEXP_REPLACE(A.CD_DESC, '(*CRLF)', 'NNN') AS CD_DESC
+					, A.USE_YN
+					, CASE A.USE_YN WHEN 'Y' THEN '사용' WHEN 'N' THEN '미사용' END AS USE_YN_NM
+					, A.CD_VAL1
+					, A.CD_VAL2
+					, A.CD_VAL3
+					, A.CD_VAL4
+					, A.CD_VAL5
+					, '' AS CHILD_CNT
+					, A.ORD
+					, 1 AS LV
+					, 'true' AS LEAF
+					, 'false' AS EX
+			FROM CD A
+			)
+		SELECT O.*
+		FROM TEMP_CD O
+		ORDER BY CASE O.LV WHEN 0 THEN O.CD WHEN 1 THEN O.GRP_CD END, O.ORD ASC
+	</select>
+
+	<!-- 메세지 전체 목록 -->
+	<select id="msgAllList" parameterType="map" resultType="box">
+		SELECT
+			  SYS_BUR_C
+			, MSG_C AS MSG_ID
+			, MSG_C
+			, MSG_TPC AS MSG_TYPE
+			, MSG_TPC
+			, MSG_KND_C
+			, APP_C
+			, MSG_CHNL_DV_C
+			, META_TRS_DT
+			, MSG_KRN_CN AS MSG_NM
+			, MSG_KRN_CN
+			, MSG_ENGL_CN AS MSG_ENM
+			, MSG_ENGL_CN
+		FROM POOMTBPFM003
+		WHERE SYS_BUR_C = '001'
+		ORDER BY MSG_C ASC
+	</select>
+
+	<select id="sendSmsChk" parameterType="map" resultType="box">
+		SELECT
+			 ID
+		FROM  USER_ACCESS
+		WHERE PHONE = #{phone}
+		AND TIMESTAMPDIFF(DAY, ACCESS_CODE_SEND_AT, NOW()) = 0
+	</select>
+
+	<select id="sendSmsCnt" parameterType="map" resultType="int">
+		SELECT SUM(`COUNT`)
+		FROM  USER_ACCESS
+		WHERE PHONE = #{phone}
+		AND TIMESTAMPDIFF(DAY, ACCESS_CODE_SEND_AT, NOW()) = 0
+	</select>
+
+	<!-- 메뉴 전체 목록 -->
+	<select id="menuAllList" parameterType="map" resultType="box">
+		WITH TEMP_MENU AS
+		(
+			SELECT
+				'_ROOT_' AS MENU_ID
+				, '최상위' AS MENU_NM
+				, MENU_ID AS SUB_ID
+				, MENU_ID AS TREE_KEY
+				, MENU_NM as SUB_NM
+				, '' as path
+				, '' as page_url
+				, 'Y' AS USE_YN
+				, '사용' AS USE_YN_NM
+				, (SELECT CAST(COUNT(*) AS VARCHAR(10)) FROM MENU_SUB WHERE MENU_ID = A.MENU_ID) AS CHILD_CNT
+				, 0 AS ORD
+				, 0 AS LV
+				, 'false' AS LEAF
+				, 'true' AS EX
+			FROM MENU A
+			WHERE
+				USE_YN = 'Y'
+				<if test='authNo != null and authNo != ""'>
+					AND MENU_ID IN (SELECT MENU_ID FROM MENU_AUTH_REL WHERE AUTH_NO = #{authNo})
+				</if>
+			UNION ALL
+			SELECT
+				MENU_ID as MENU_ID
+				, (SELECT MENU_NM FROM MENU WHERE MENU_ID = A.MENU_ID) AS MENU_NM
+				, SUB_ID
+				, A.MENU_ID || '_' || A.SUB_ID AS TREE_KEY
+				, SUB_NM
+				, PATH
+				, PAGE_URL
+				, USE_YN
+				, CASE USE_YN WHEN 'Y' THEN '사용' WHEN 'N' THEN '미사용' END AS USE_YN_NM
+				, '' AS CHILD_CNT
+				, ORD
+				, 1 AS LV
+				, 'true' AS LEAF
+				, 'false' AS EX
+			FROM MENU_SUB A
+			WHERE
+				USE_YN = 'Y'
+				AND MENU_ID IN (SELECT MENU_ID FROM MENU WHERE USE_YN = 'Y')
+				<if test='authNo != null and authNo != ""'>
+					AND SUB_ID IN (SELECT SUB_ID FROM MENU_AUTH_REL WHERE AUTH_NO = #{authNo})
+					AND MENU_ID IN (SELECT MENU_ID FROM MENU_AUTH_REL WHERE AUTH_NO = #{authNo})
+				</if>
+		)
+		SELECT O.*
+		FROM TEMP_MENU O
+		ORDER BY CASE O.LV WHEN 0 THEN O.SUB_ID WHEN 1 THEN O.MENU_ID END, O.ORD ASC
+	</select>
+
+	<select id="keyList" parameterType="String" resultType="String">
+		SELECT
+			VALUE
+		FROM API_SETTING
+		WHERE TITLE = #{title}
+	</select>
+
+	<select id="phoneChk" parameterType="String" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER`
+		WHERE PHONE = #{phone}
+	</select>
+
+	<select id="joinInfoUsrIdView" parameterType="map" resultType="String">
+		SELECT ID
+		FROM `USER`
+		WHERE EMAIL = #{email}
+		AND PASSWORD =  #{password}
+	</select>
+
+	<select id="phoneAuthChk" parameterType="String" resultType="box">
+		SELECT
+			  ID
+			, DEVICE_TOKEN
+			, AUTH_TOKEN
+			, EMAIL
+			, PASSWORD
+			, PHONE
+			, ACTIVE
+		FROM `USER`
+		WHERE PHONE = #{phone}
+	</select>
+
+	<select id="accessInfoView" parameterType="map" resultType="box">
+		SELECT
+			  ACCESS_TOKEN
+			, PHONE
+			, ACCESS_CODE
+			, DATE_FORMAT(ACCESS_CODE_SEND_AT, '%Y-%m-%d %H:%i:%s') AS ACCESS_CODE_SEND_AT
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM USER_ACCESS
+		WHERE ACCESS_TOKEN = #{accessToken}
+	</select>
+
+	<select id="accessEmailInfoView" parameterType="map" resultType="box">
+		SELECT
+			  ACCESS_TOKEN
+			, PHONE
+			, ACCESS_CODE
+			, DATE_FORMAT(ACCESS_CODE_SEND_AT, '%Y-%m-%d %H:%i:%s') AS ACCESS_CODE_SEND_AT
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM USER_ACCESS
+		WHERE ACCESS_TOKEN = #{accessToken}
+		AND ACCESS_CODE = #{accessCode}
+	</select>
+
+	<select id="duplChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER`
+		<include refid="duplicateChk"/>
+	</select>
+
+	<select id="userEmailView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, EMAIL
+		FROM `USER`
+		WHERE PHONE = #{seedPhone}
+		AND ACTIVE = 1
+	</select>
+
+	<select id="emailNmView" parameterType="String" resultType="box">
+		SELECT
+			  ID
+			, EMAIL
+			, USERNAME
+		FROM `USER`
+		WHERE EMAIL = #{seedEncrypt}
+		AND ACTIVE = 1
+	</select>
+
+	<select id="joinPhoneChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER`
+		WHERE PHONE = #{seedPhone}
+		AND ACTIVE = 1
+	</select>
+
+	<select id="verifyAuthCode" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER_ACCESS`
+		WHERE ACCESS_TOKEN = #{accessToken}
+		AND PHONE = #{seedPhone}
+		AND ACCESS_CODE = #{accessCode}
+	</select>
+
+<!-- 	<select id="autoLoginChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM USER AS U
+		WHERE U.EMAIL = #{email}
+		AND U.PASSWORD = #{password}
+		AND U.AUTH_TOKEN = #{authToken}
+	</select> -->
+
+	<select id="lockCntChk" parameterType="map" resultType="String">
+		SELECT
+			LOCK_CNT
+		FROM `USER`
+		WHERE EMAIL = #{email}
+	</select>
+
+	<select id="accessTokenView" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM USER_ACCESS
+		WHERE ACCESS_TOKEN = #{accessToken}
+	</select>
+
+	<select id="userDrawChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER`
+		WHERE ID = #{sBox.id}
+		AND ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="passwordChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER`
+		WHERE ID = #{sBox.id}
+		AND PASSWORD = #{password}
+		AND ACTIVE NOT IN (0,2)
+	</select>
+
+	<insert id="userInsert" parameterType="map">
+		INSERT INTO `USER` (
+			  DEVICE_TOKEN
+			, AUTH_TOKEN
+			, EMAIL
+			, PASSWORD
+			, PHONE
+			, ACTIVE
+			, ACTIVE_REASON
+			, ACTIVE_REASON_DETAIL
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, USERNAME
+			, ROLE
+			, POINT
+			, GRADE
+			, FIRST_NAME
+			, LAST_NAME
+			, GENDER
+			, BIO
+			, TOKEN
+			, LOCK_CNT
+			, IP
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		)VALUES(
+			  ''
+			, ''
+			, #{email}
+			, #{password}
+			, #{phone}
+			, #{active}
+			, ''
+			, ''
+			, #{profilePic}
+			, #{profilePicSmall}
+			, #{username}
+			, #{role}
+			, #{point}
+			, #{grade}
+			, ''
+			, ''
+			, ''
+			, ''
+			, ''
+			, 0
+			, ''
+			, 0
+			, NOW()
+			, 0
+			, NOW()
+		)
+	</insert>
+
+	<insert id="accessTokenInsert" parameterType="String">
+		INSERT INTO USER_ACCESS (
+			  ACCESS_TOKEN
+			, REG_DT
+			, REG_ID
+			, MOD_DT
+			, MOD_ID
+		)VALUES(
+			  #{accessToken}
+			, NOW()
+			, 0
+			, NOW()
+			, 0
+		)
+	</insert>
+
+	<insert id="smsProdInsert" parameterType="map">
+		INSERT INTO homepage.sc_tran
+		(
+			   TR_SENDDATE
+			 , TR_SENDSTAT
+			 , TR_MSGTYPE
+			 , TR_PHONE
+			 , TR_CALLBACK
+			 , TR_MSG
+		 ) VALUES(
+			   NOW()
+			 , '0'
+			 , '0'
+			 , #{phone}
+			 , '070-4352-0849'
+			 , #{content}
+		 )
+	</insert>
+
+	<update id="userAccessUpdate" parameterType="map">
+		UPDATE USER_ACCESS
+			SET   PHONE = #{phone}
+				, ACCESS_CODE = #{accessCd}
+				, ACCESS_CODE_SEND_AT = #{accessDt}
+				, `COUNT` =  `COUNT` + 1
+		WHERE ACCESS_TOKEN = #{accessToken}
+	</update>
+
+	<update id="deviceUpdate" parameterType="map">
+		UPDATE `USER` AS U
+			SET
+				<if test='deviceTokenNew == null or deviceTokenNew == ""'>
+					U.DEVICE_TOKEN = #{deviceToken}
+				</if>
+				<if test='deviceTokenNew != null and deviceTokenNew != ""'>
+					U.DEVICE_TOKEN = #{deviceTokenNew}
+				</if>
+		WHERE U.EMAIL = #{email}
+		AND U.PASSWORD = #{password}
+	</update>
+
+	<update id="passwordUpdate" parameterType="map">
+		UPDATE `USER` AS U
+			SET   U.PASSWORD = #{password}
+		WHERE U.EMAIL = #{email}
+	</update>
+
+	<!-- auth_token / device_token 값 update ( 회원 ) -->
+	<update id="updateAuthToken" parameterType="map">
+		UPDATE `USER` AS U
+			SET   U.AUTH_TOKEN = #{authToken}
+		WHERE U.EMAIL = #{email}
+		AND U.PASSWORD = #{password}
+	</update>
+
+	<update id="updateFailCnt" parameterType="map">
+		UPDATE `USER` AS U
+			SET U.LOCK_CNT = U.LOCK_CNT + 1
+		WHERE U.EMAIL = #{email}
+	</update>
+
+	<update id="drawUpdate" parameterType="map">
+		UPDATE `USER`
+			SET ACTIVE = 0
+		WHERE ID = #{sBox.id}
+		AND PASSWORD = #{password}
+	</update>
+</mapper>

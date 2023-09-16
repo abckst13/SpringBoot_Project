@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="category.info">
+
+	<select id="upMenuList" parameterType="map" resultType="box">
+		SELECT
+			  GM.ID
+			, GM.GNB_CODE
+			, GM.GNB_NAME
+			, GM.GNB_URL
+		FROM GNB_MENU GM
+		WHERE GNB_LEVEL  = 1
+	</select>
+
+	<select id="lowMenuList" parameterType="map" resultType="box">
+		SELECT
+			  GM.ID
+			, GM.GNB_CODE
+			, GM.GNB_NAME
+			, GM.GNB_URL
+			, GM.DESCRIPTION
+		FROM GNB_MENU GM
+		WHERE GM.GNB_PARENT = #{gnbCode}
+	</select>
+
+	<select id="userInfo" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, POINT
+			, GRADE
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = GRADE ) AS GRADE_NM
+			, ( SELECT  COUNT(*) AS CNT
+				FROM EVENT_APPLY_HISTORY AS AH
+				WHERE USER_ID = #{userId}
+				AND AH.REG_DT BETWEEN DATE_SUB(NOW(), INTERVAL 3 MONTH) AND NOW()) AS EVENT_APPLY_CNT
+		FROM USER
+		WHERE ID = #{sBox.id}
+	</select>
+
+</mapper>

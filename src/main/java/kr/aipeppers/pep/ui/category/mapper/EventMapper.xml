@@ -1,0 +1,542 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="category.event">
+
+	<sql id="eventSrch">
+		<where>
+			LK.DEL_YN = 'N'
+			<if test='type == "pre" and type != null and type != "" '>
+				AND DATE_FORMAT(LK.START_DT, '%Y-%m-%d') <![CDATA[>]]>   DATE_FORMAT(NOW(), '%Y-%m-%d')
+			</if>
+			<if test='type == "on" and type != null and type != "" '>
+				AND DATE_FORMAT(NOW(), '%Y-%m-%d') BETWEEN DATE_FORMAT(LK.START_DT, '%Y-%m-%d') AND DATE_FORMAT(LK.END_DT, '%Y-%m-%d')
+			</if>
+			<if test='type == "close" and type != null and type != "" '>
+				AND DATE_FORMAT(LK.END_DT, '%Y-%m-%d') <![CDATA[<]]>   DATE_FORMAT(NOW(), '%Y-%m-%d') AND ( LK.END_DT BETWEEN DATE_ADD(NOW(), INTERVAL -3 MONTH ) AND NOW() )
+			</if>
+		</where>
+	</sql>
+
+
+	<!-- 럭키드로우 총갯수 -->
+	<select id="eventLuckyDrawCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM LUCKYDRAWS LK
+		<include refid="eventSrch" />
+	</select>
+
+	<!-- 럭키드로우 조회 -->
+	<select id="eventLuckyDrawList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			<choose>
+				<when test='sortColumn != null and sortColumn != ""'>
+					ROW_NUMBER() OVER(ORDER BY ${sortColumn} ${sortOrder}) AS RNUM
+				</when>
+				<otherwise>
+					ROW_NUMBER() OVER(ORDER BY LK.ID ASC) AS RNUM
+				</otherwise>
+			</choose>
+			, LK.ID
+			, LK.EVENT_NAME
+			, DATE_FORMAT(LK.START_DT, '%Y-%m-%d %H:%m') AS START_DT
+			, DATE_FORMAT(LK.END_DT, '%Y-%m-%d %H:%m') AS END_DT
+			, LK.WINNER_GOODS_ID
+			, LK.HITS
+			, DATE_FORMAT(LK.WINNER_DT, '%Y-%m-%d %H:%m') AS WINNER_DT
+			, LK.WINNER_NUM
+			, LK.WINNER_RESULT_YN
+			, LK.FILE_PATH
+			, LK.FILE_PATH2
+			, LK.FILE_PATH3
+			, LK.FILE_PATH4
+			, LK.FILE_PATH5
+			, LK.FILE_NAME
+			, LK.USE_YN
+			, LK.REG_ID
+			, DATE_FORMAT(LK.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, LK.MOD_ID
+			, DATE_FORMAT(LK.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, LK.ORD
+			, LK.DEL_YN
+		FROM LUCKYDRAWS LK
+		<include refid="eventSrch" />
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="luckydrawApplyCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM LUCKYDRAWS_APPLY  AS A
+		WHERE EVENT_ID = #{id}
+		AND APPLY_USER_ID = #{userId}
+	</select>
+
+	<select id="openGiftBoxChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM ATTEND_CHECK AS A
+		WHERE A.ATTEND_SETTING_ID = #{attendId}
+		AND A.USER_ID = #{userId}
+	</select>
+
+	<select id="defaultAttendList" parameterType="map" resultType="box">
+		SELECT
+			  A.ID
+			, DATE_FORMAT(A.ATTEND_DATE , '%Y-%m-%d') AS DATE
+			, A.ATTEND_DAY
+			, A.ATTEND_PRODUCT_TYPE
+			, A.ATTEND_POINT
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = A.ATTEND_PRODUCT_TYPE) AS ATTEND_PRODUCT_NM
+			, (CASE
+				WHEN (SELECT COUNT(*) FROM ATTEND_CHECK AS B WHERE B.ATTEND_SETTING_ID = A.ID AND B.USER_ID = #{userId}) > 0 THEN 'Y'
+				ELSE 'N'
+			  END) AS ATTEND_CHECK
+		FROM ATTEND_SETTING AS A
+		WHERE A.ATTEND_YEAR = #{year}
+		AND A.ATTEND_MONTH =  #{month}
+		ORDER BY A.ATTEND_DAY ASC
+	</select>
+
+	<select id="luckydrawDetailView" parameterType="map" resultType="box">
+		SELECT
+			  LK.ID
+			, LK.EVENT_NAME
+			, DATE_FORMAT(LK.START_DT, '%Y-%m-%d') AS START_DT
+			, DATE_FORMAT(LK.END_DT, '%Y-%m-%d') AS END_DT
+			, LK.WINNER_GOODS_ID
+			, LK.HITS
+			, DATE_FORMAT(LK.WINNER_DT, '%Y-%m-%d') AS WINNER_DT
+			, LK.WINNER_NUM
+			, LK.WINNER_RESULT_YN
+			, LK.FILE_PATH
+			, LK.FILE_PATH2
+			, LK.FILE_PATH3
+			, LK.FILE_PATH4
+			, LK.FILE_PATH5
+			, LK.FILE_NAME
+			, LK.USE_YN
+			, LK.REG_ID
+			, DATE_FORMAT(LK.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, LK.MOD_ID
+			, DATE_FORMAT(LK.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, LK.ORD
+			, LK.DEL_YN
+		FROM LUCKYDRAWS LK
+	 	WHERE LK.ID = #{id}
+	</select>
+
+	<select id="attendSettingView" parameterType="map" resultType="box">
+		SELECT
+			  AT.ID AS ATTEND_SETTING_ID
+			, DATE_FORMAT(AT.ATTEND_DATE, '%Y-%m-%d') AS DATE
+			, AT.ATTEND_YEAR
+			, AT.ATTEND_MONTH
+			, AT.ATTEND_DAY
+			, AT.ATTEND_PRODUCT_TYPE
+			, AT.ATTEND_POINT
+			, AT.REG_ID
+			, DATE_FORMAT(AT.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, AT.MOD_ID
+			, DATE_FORMAT(AT.MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+		FROM ATTEND_SETTING	AS AT
+		WHERE AT.ATTEND_DATE = #{date}
+	</select>
+
+	<select id="isMyVote" parameterType="map" resultType="box">
+		SELECT
+		*
+		FROM MVP_PLAYER MP
+		WHERE USER_ID = #{user_id}
+		AND MATCH_ID = #{match_id}
+	</select>
+
+	<select id="pointChkCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM AI_POINT
+		WHERE USER_ID = #{userId}
+		AND DATE_FORMAT(REG_DT, '%Y-%m-%d') = #{date}
+	</select>
+
+	<select id="attendIdView" parameterType="map" resultType="int">
+		SELECT ID AS ATTEND_ID
+		FROM ATTEND_CHECK
+		WHERE USER_ID = #{userId}
+		AND CHECK_DATE = #{date}
+	</select>
+
+	<select id="fortuneData" resultType="box">
+		SELECT
+			  ID
+			, NAME AS FORTUNE_NAME
+			, MESSAGE AS FORTUNE_MESSAGE
+		FROM FORTUNE_MESSAGE
+		ORDER BY RAND()
+		LIMIT 1
+	</select>
+
+	<select id="giftBoxList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, YEAR
+			, MONTH
+			, NAME
+			, RANK
+			, POINT AS ATTEND_POINT
+			, DESCRIPTION
+			, IMAGE_URL
+			, QUANTITY
+			, RATE
+			, USE_YN
+			, DEL_YN
+		FROM ATTEND_GIFT
+		WHERE `YEAR` = #{year}
+		AND `MONTH` = #{month}
+		AND QUANTITY > 0
+	</select>
+
+	<select id="attendChk" parameterType="map" resultType="int">
+	 	SELECT COUNT(*) AS CNT
+	 	FROM ATTEND_CHECK
+	 	WHERE ATTEND_SETTING_ID = #{attendSettingId}
+	</select>
+
+	<select id="attendGiftView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, YEAR
+			, MONTH
+			, NAME
+			, RANK
+			, POINT
+			, DESCRIPTION
+			, IMAGE_URL
+			, QUANTITY
+			, RATE
+			, USE_YN
+			, DEL_YN
+			, REG_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, MOD_ID
+			, DATE_FORMAT(MOD_DT, '%Y-%m-%d %H:%i:%s') AS MOD_DT
+		FROM ATTEND_GIFT
+		WHERE ID = #{id}
+	</select>
+
+	<select id="luckydrawWinView" parameterType="map" resultType="box">
+		SELECT
+			   A.APPLY_USER_ID
+			,  A.NAME
+			, (SELECT EMAIL FROM USER WHERE ID = A.APPLY_USER_ID) AS APPLY_EMAIL
+		FROM LUCKYDRAWS_APPLY AS A
+		WHERE EVENT_ID = #{eventId}
+		AND WINNER_YN = 'Y'
+	</select>
+
+
+
+	<select id="matchScheduleDetail" parameterType="map" resultType="box">
+		SELECT
+			ID
+			, GUBUN
+			, DATE_FORMAT(MATCH_DATE, "%Y-%m-%d %H:%m") MATCH_DATE
+			, HOMETEAM_ID
+			, AWAYTEAM_ID
+			, HOME_SCORE
+			, HOME_SCORE_DETAIL
+			, AWAY_SCORE
+			, AWAY_SCORE_DETAIL
+		FROM MATCH_SCHEDULE
+		WHERE ID = #{matchId}
+	</select>
+	<select id="mvpPlayerIsExist" parameterType="map" resultType="box">
+		SELECT *
+		FROM MVP_PLAYER
+		WHERE MATCH_ID = #{matchId}
+		AND USER_ID = #{sBox.id}
+	</select>
+	<update id="mvpPlayerUpdate" parameterType="map">
+		UPDATE MVP_PLAYER
+		SET PHONE = #{phone}
+			,NAME = #{name}
+			,IS_AGREE = #{isAgree}
+			,APPLY_DT = NOW()
+		WHERE MATCH_ID = #{matchId}
+		AND USER_ID = #{userId}
+	</update>
+	<insert id="eventApplyHistoryInsert" parameterType="map">
+		INSERT INTO EVENT_APPLY_HISTORY (
+			  EVENT_REL_ID
+			, USER_ID
+			, EVENT_TYPE
+			, EVENT_DESC
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{eventRelId}
+			, #{userId}
+			, #{eventType}
+			, #{eventDesc}
+			, #{userId}
+			, NOW()
+		)
+	</insert>
+
+
+
+
+
+	<select id="isExistMatchVictory" parameterType="map" resultType="int">
+		SELECT count(*) AS cnt
+		FROM MATCH_VICTORY
+		WHERE USER_ID = #{userId}
+		AND MATCH_ID = #{matchId}
+	</select>
+	<insert id="matchVictoryInsert" parameterType="map">
+		INSERT INTO MATCH_VICTORY (
+			  MATCH_ID
+			, USER_ID
+			, HOME_SCORE
+			, AWAY_SCORE
+			, HOME_SCORE_DETAIL
+			, AWAY_SCORE_DETAIL
+		) VALUES (
+			  #{matchId}
+			, #{userId}
+			, #{homeScore}
+			, #{awayScore}
+			, #{our}
+			, #{opp}
+		)
+	</insert>
+
+
+	<select id="getMatchVictory" parameterType="map" resultType="box">
+		SELECT *
+		FROM MATCH_VICTORY
+		WHERE USER_ID = #{userId}
+		AND MATCH_ID = #{matchId}
+	</select>
+	<select id="teamView" parameterType="String" resultType="box">
+		SELECT
+			  TM.TEAM_ID
+			, TM.TEAM_NAME
+			, TM.E_TEAM_NAME
+			, TM.TEAM_PIC_URL
+			, TM.TEAM_PIC_URL_SUB
+		FROM TEAM AS TM
+		<include refid="teamInfoSrch" />
+	</select>
+	<sql id="teamInfoSrch">
+		<where>
+			<if test='teamId != null and teamId != ""'>
+				TM.TEAM_ID = #{teamId}
+			</if>
+		</where>
+	</sql>
+	<update id="updateMatchVictory" parameterType="map">
+		UPDATE MATCH_VICTORY
+		SET PREDICT_YN = #{predictYn}
+		WHERE ID = #{id}
+	</update>
+
+
+	<select id="attendDoubleChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM ATTEND_GIFT_USERINFO
+		WHERE USER_ID = #{sBox.id}
+		AND ATTEND_CHECK_ID = #{attendId}
+	</select>
+	<select id="attendGiftIdChk" parameterType="map" resultType="box">
+		SELECT ATTEND_GIFT_ID
+		FROM ATTEND_CHECK
+		WHERE ID = #{attendId}
+	</select>
+
+	<insert id="pointInsert" parameterType="map">
+		INSERT INTO AI_POINT (
+			  USER_ID
+			, `POINT`
+			, USE_POINT
+			, POINT_TYPE
+			, DESCRIPTION
+			, REG_DT
+			, REG_ID
+			, MOD_DT
+			, MOD_ID
+		) VALUES (
+			  #{userId}
+			, #{attendPoint}
+			, #{usePoint}
+			, #{pointType}
+			, #{description}
+			, NOW()
+			, #{userId}
+			, NOW()
+			, #{userId}
+		)
+	</insert>
+
+
+	<select id="matchGiftUserInfoIsExist" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS cnt
+		FROM MATCH_GIFT_USERINFO
+		WHERE USER_ID = #{userId}
+		AND MATCH_ID = #{matchId}
+		AND VICTORY_ID = #{victoryId}
+	</select>
+	<select id="matchVictoryIsExist" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS cnt
+		FROM MATCH_VICTORY
+		WHERE USER_ID = #{userId}
+		AND ID = #{victoryId}
+		AND PREDICT_YN = 'Y'
+	</select>
+	<select id="matchScheduleIsExist" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS cnt
+		FROM MATCH_SCHEDULE
+		WHERE ID = #{matchId}
+		AND USE_YN = 'Y'
+	</select>
+	<insert id="matchVictoryInsertInfo" parameterType="map">
+		INSERT INTO MATCH_GIFT_USERINFO (
+			  MATCH_ID
+			, VICTORY_ID
+			, USER_ID
+			, NAME
+			, PHONE
+			, IS_AGREE
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{matchId}
+			, #{victoryId}
+			, #{userId}
+			, #{name}
+			, #{phone}
+			, #{agree}
+			, #{userID}
+			, NOW()
+		)
+	</insert>
+
+
+	<insert id="attendChkInsert" parameterType="map">
+		INSERT INTO ATTEND_CHECK (
+			  ATTEND_SETTING_ID
+			, USER_ID
+			, CHECK_DATE
+			, FORTUNE_MESSAGE_ID
+			, ATTEND_GIFT_ID
+			, USE_YN
+			, DEL_YN
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{attendSettingId}
+			, #{userId}
+			, #{checkDate}
+			, #{fortuneMessageId}
+			, #{attendGiftId}
+			, 'Y'
+			, 'N'
+			, #{userId}
+			, NOW()
+			, #{userId}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="luckydrawInsert" parameterType="map">
+		INSERT INTO LUCKYDRAWS_APPLY (
+			  EVENT_ID
+			, APPLY_USER_ID
+			, PHONE
+			, NAME
+			, APPLY_DT
+			, USE_YN
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+			, IS_AGREE
+		) VALUES (
+			  #{id}
+			, #{userId}
+			, #{phone}
+			, #{name}
+			, NOW()
+			, 'Y'
+			, #{userId}
+			, NOW()
+			, #{userId}
+			, NOW()
+			, #{isAgree}
+		)
+	</insert>
+
+	<insert id="eventApplyInsert" parameterType="map">
+		INSERT INTO EVENT_APPLY_HISTORY (
+			  USER_ID
+			, EVENT_REL_ID
+			, EVENT_TYPE
+			, EVENT_DESC
+			, REG_DT
+			, REG_ID
+		) VALUES (
+			  #{userId}
+			, #{id}
+			, #{eventType}
+			, #{eventDesc}
+			, NOW()
+			, #{userId}
+		)
+	</insert>
+
+	<insert id="attendanceRecipientInsert" parameterType="map">
+		INSERT INTO ATTEND_GIFT_USERINFO (
+			  ATTEND_CHECK_ID
+			, ATTEND_GIFT_ID
+			, USER_ID
+			, NAME
+			, PHONE
+			, CREATED_AT
+			, IA_AGREE
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{attendId}
+			, #{attendGiftId}
+			, #{userId}
+			, #{name}
+			, #{phone}
+			, NOW()
+			, #{isAgree}
+			, #{userId}
+			, NOW()
+			, #{userId}
+			, NOW()
+		)
+	</insert>
+
+	<update id="usrPointUpdate" parameterType="map">
+		UPDATE USER AS A
+		SET POINT = (CASE
+					 	WHEN #{pointType} = 'PS' THEN (A.POINT + #{attendPoint})
+					 	WHEN #{pointType} = 'PU' THEN (A.POINT - #{usePoint})
+				  	 END)
+			, MOD_ID = #{userId}
+			, MOD_DT = NOW()
+		WHERE ID = #{userId}
+	</update>
+
+	<update id="giftOrderUpdate" parameterType="map">
+		UPDATE ATTEND_GIFT AS AG
+		SET   QUANTITY = AG.QUANTITY -1
+			, MOD_ID = #{userId}
+			, MOD_DT = NOW()
+		WHERE ID = #{id}
+	</update>
+</mapper>

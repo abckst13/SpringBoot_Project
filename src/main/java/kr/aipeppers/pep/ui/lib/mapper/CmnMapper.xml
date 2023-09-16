@@ -1,0 +1,640 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cmn">
+
+	<!-- 페이징 쿼리 시작 -->
+	<sql id="pageStr">
+		<if test='paginate != null'><if test='paginate.currPage &gt; 0'>SELECT T.* FROM ( </if></if>
+	</sql>
+	<!-- 페이징 쿼리 종료 -->
+	<sql id="pageEnd">
+		<if test='paginate != null'><if test='paginate.currPage &gt; 0'>) T WHERE T.RNUM BETWEEN #{paginate.startNum} AND #{paginate.endNum}</if></if>
+	</sql>
+
+	<!-- 로그인 히스토리 등록-->
+	<insert id="memHistInsert" parameterType="map">
+		INSERT INTO MEM_LOG (
+			  MEM_NO
+			, ACS_DT
+			, ACS_IP
+			, SCS_YN
+			, HST_DESC
+		) VALUES (
+			  CAST(#{memNo} AS INTEGER)
+			, NOW()
+			, #{acsIp}
+			, 'Y'
+			, #{hstDesc}
+		)
+	</insert>
+
+	<!-- 코드 전체 목록 -->
+	<select id="cdAllList" parameterType="map" resultType="box">
+		SELECT /*NO_LOG*/
+			  A.GRP_CD
+			, (SELECT GRP_CD_NM FROM GRP_CD WHERE GRP_CD = A.GRP_CD) AS GRP_CD_NM
+			, A.CD
+			, A.CD_NM
+			, A.CD_DESC
+			, A.USE_YN
+			, A.ORD
+			, A.CD_VAL1
+			, A.CD_VAL2
+			, A.CD_VAL3
+		FROM DTL_CD A
+	</select>
+
+	<!-- 전체메시지 목록 -->
+	<select id="msgAllList" parameterType="map" resultType="box">
+		SELECT /*NO_LOG*/
+			  A.MSG_ID
+			, A.MSG_NM
+			, A.MSG_TYPE
+			, (SELECT CD_NM FROM DTL_CD WHERE GRP_CD = 'MSG_TYPE' AND CD = A.MSG_TYPE) AS MSG_TYPE_NM
+			, A.MSG_DESC
+		FROM MSG A
+		ORDER BY A.MSG_ID ASC
+	</select>
+
+
+	<select id="msgView" parameterType="map" resultType="box">
+		SELECT
+			  SYS_BUR_C
+			, MSG_C AS MSG_ID
+			, MSG_C
+			, MSG_TPC AS MSG_TYPE
+			, MSG_TPC
+			, MSG_KND_C
+			, APP_C
+			, MSG_CHNL_DV_C
+			, META_TRS_DT
+			, MSG_KRN_CN AS MSG_NM
+			, MSG_KRN_CN
+			, MSG_ENGL_CN AS MSG_ENM
+			, MSG_ENGL_CN
+		  FROM POOMTBPFM003
+		 WHERE SYS_BUR_C = '001'
+		   AND MSG_C = #{msgC}
+	</select>
+
+	<!-- IF메시지 단건 조회s -->
+	<select id="ifMsg" parameterType="map" resultType="box">
+		SELECT A.LGSYS_IF_ID
+		     , A.LGSYS_MSG_C
+		     , A.MSG_C
+		 FROM POOMTBPFM004 A
+		 WHERE A.LGSYS_IF_ID = #{lgsysIfId}
+		  AND  A.LGSYS_MSG_C = #{lgsysMsgC}
+	</select>
+
+	<!-- 코드 트리 목록 -->
+	<select id="cdTreeList" parameterType="map" resultType="box">
+		WITH TEMP_CD AS /*NO_LOG*/
+			(
+				SELECT
+						  '_ROOT_' AS GRP_CD
+						, '최상위' AS GRP_CD_NM
+						, A.GRP_CD AS CD
+						, A.GRP_CD AS TREE_KEY
+						, CONCAT(A.GRP_CD_NM, ' (', (SELECT COUNT(*) FROM DTL_CD WHERE GRP_CD = A.GRP_CD), ')') AS CD_NM
+						, A.GRP_DESC
+						, 'Y' AS USE_YN
+						, '사용' AS USE_YN_NM
+						, '' AS CD_VAL1
+						, '' AS CD_VAL2
+						, '' AS CD_VAL3
+						, 0 AS ORD
+						, 0 AS LV
+						, 'false' AS LEAF
+						, 'true' AS EX
+				FROM GRP_CD A
+				UNION ALL
+				SELECT
+						  A.GRP_CD
+						, (SELECT GRP_CD_NM FROM GRP_CD WHERE GRP_CD = A.GRP_CD) AS GRP_CD_NM
+						, A.CD
+						, CONCAT(A.GRP_CD, '_', A.CD) AS TREE_KEY
+						, A.CD_NM
+						, A.CD_DESC
+						, A.USE_YN
+						, CASE A.USE_YN WHEN 'Y' THEN '사용' WHEN 'N' THEN '미사용' END AS USE_YN_NM
+						, A.CD_VAL1
+						, A.CD_VAL2
+						, A.CD_VAL3
+						, A.ORD
+						, 1 AS LV
+						, 'true' AS LEAF
+						, 'false' AS EX
+				FROM DTL_CD A
+			)
+		SELECT O.*
+		FROM TEMP_CD O
+		ORDER BY CASE O.LV WHEN 0 THEN O.CD WHEN 1 THEN O.GRP_CD END, O.ORD ASC
+	</select>
+
+	<!-- 코드 목록 -->
+	<select id="cdList"  resultType="box">
+		SELECT   A.SYS_BUR_C
+		       , A.ITC_KNM
+		       , A.ITC_INS
+		       , A.ITC_CLSF_TP_ID
+		       , A.ITC_DRM_ID
+		       , A.ITC_INS_NM
+		       , A.ITC_ENM
+		       , A.ITC_INS_SEQN
+		       , A.ITC_INS_FRML_NM
+		       , A.ITC_INS_ENGL_ABBR_NM
+		       , A.ITC_INS_ENGL_FRML_NM
+		       , A.HGR_ITC_INS
+		       , A.HGR_ITC_INS_NM
+		       , A.VL_STRTDT
+		       , A.VL_ENDDT
+		       , A.ITC_INS_CNSTNT_CN
+		       , DATE_FORMAT(A.META_CRT_TS, '%Y%m%d%H%i%s') AS META_CRT_TS
+		       , A.EAI_PROCS_STC
+		       , A.META_TRS_DT
+		       , DATE_FORMAT(A.SYS_FST_RG_TS, '%Y%m%d%H%i%s') AS SYS_FST_RG_TS
+		       , A.SYS_FST_RG_USID
+		       , DATE_FORMAT(A.SYS_FST_RG_TS, '%Y%m%d%H%i%s') AS SYS_FST_RG_TS
+		       , A.SYS_LT_CH_USID
+		FROM   POOMTBPFM002 A
+		WHERE  A.SYS_BUR_C = '001'
+		AND    A.ITC_ENM = #{itcEnm}
+<!-- 		<if test='itcClsfTpId != null and itcClsfTpId != ""'> -->
+<!-- 				AND A.ITC_CLSF_TP_ID LIKE'%' || #{itcClsfTpId} || '%' -->
+<!-- 			</if> -->
+		ORDER BY A.ITC_INS_SEQN ASC
+	</select>
+
+
+	<!-- 시퀀스 채번 -->
+	<select id="seqView" parameterType="map" resultType="box">
+		SELECT ${seqNm}.NEXTVAL AS SEQ_ID FROM DUAL
+	</select>
+
+	<!-- 첨부파일 PK조회 -->
+	<select id="fileView" parameterType="map" resultType="box">
+		SELECT
+			  A.FILE_ID
+			, A.FILE_GROUP
+			, A.REF_NO
+			, A.FILE_NAME
+			, A.SYS_FILE_NAME
+			, A.FILE_PATH
+			, A.FILE_SIZE
+			, A.DELETE_FLAG
+			, A.SYS_DELETE_FLAG
+			, A.CREATION_DATE
+			, A.CREATED_BY_EMP_NO
+			, A.LAST_UPDATE_DATE
+			, A.LAST_UPDATED_BY_EMP_NO
+			, A.SYSTEM_ID
+			, A.EXPIRATION_DATE
+			, A.DELETE_DATE
+			, A.DOWNLOAD_COUNT
+		FROM NSF_ATTACH_FILE_INFO A
+		<where>
+			AND A.FILE_ID = #{fileId}
+			<if test='delYn != null and delYn != ""'>
+				AND A.DELETE_FLAG = #{delYn}
+			</if>
+			<if test='delYn == null or delYn == ""'>
+				AND A.DELETE_FLAG = 'N'
+			</if>
+			AND A.SYS_DELETE_FLAG = 'N'
+			AND (A.EXPIRATION_DATE &gt; SYSDATE OR A.EXPIRATION_DATE IS NULL)
+		</where>
+	</select>
+
+	<!-- 첨부파일 참조키 조회 -->
+	<select id="fileRefList" parameterType="map" resultType="box">
+		SELECT
+			  A.FILE_ID
+			, A.FILE_GROUP
+			, A.REF_NO
+			, A.FILE_NAME
+			, A.SYS_FILE_NAME
+			, A.FILE_PATH
+			, A.FILE_SIZE
+			, A.DELETE_FLAG
+			, A.SYS_DELETE_FLAG
+			, A.CREATION_DATE
+			, A.CREATED_BY_EMP_NO
+			, A.LAST_UPDATE_DATE
+			, A.LAST_UPDATED_BY_EMP_NO
+			, A.SYSTEM_ID
+			, A.EXPIRATION_DATE
+			, A.DELETE_DATE
+			, A.DOWNLOAD_COUNT
+		FROM NSF_ATTACH_FILE_INFO A
+		<where>
+			AND A.FILE_GROUP = #{fileGroup}
+			AND A.REF_NO = #{refNo}
+			<if test='delYn != null and delYn != ""'>
+				AND A.DELETE_FLAG = #{delYn}
+			</if>
+			<if test='delYn == null or delYn == ""'>
+				AND A.DELETE_FLAG = 'N'
+			</if>
+			AND A.SYS_DELETE_FLAG = 'N'
+			AND (A.EXPIRATION_DATE &gt; SYSDATE OR A.EXPIRATION_DATE IS NULL)
+		</where>
+		ORDER BY A.CREATION_DATE ASC
+	</select>
+
+	<!-- 첨부파일 시퀀스 -->
+<!-- 	<select id="fileIdView" parameterType="map" resultType="int"> -->
+<!-- 		SELECT SQ_FILE_01.NEXTVAL AS FILE_ID FROM DUAL -->
+<!-- 	</select> -->
+
+	<!-- 첨부파일 등록-->
+	<insert id="fileInsert" parameterType="map">
+<!-- 		<selectKey resultType="int" keyProperty="fileId" order="BEFORE"> -->
+<!-- 			SELECT SQ_FILE_01.NEXTVAL AS FILE_ID FROM DUAL -->
+<!-- 		</selectKey> -->
+
+			INSERT INTO NSF_ATTACH_FILE_INFO ( /* 첨부파일 */
+				  FILE_ID
+				, CREATED_BY_EMP_NO
+				, LAST_UPDATED_BY_EMP_NO
+				, FILE_GROUP
+				, REF_NO
+				, FILE_NAME
+				, SYS_FILE_NAME
+				, FILE_PATH
+				, FILE_SIZE
+				, SYSTEM_ID
+<!-- 				, EXPIRATION_DATE -->
+			) VALUES (
+				  #{fileId}
+				, #{sBox.userId}
+				, #{sBox.userId}
+				, #{fileGroup}
+				, #{refNo}
+				, #{fileName}
+				, #{sysFileName}
+				, #{filePath}
+				, #{fileSize}
+				, #{sBox.systemId}
+<!-- 				, #{expirationDate} -->
+			)
+	</insert>
+
+	<!-- 첨부파일 삭제상태로 변경 -->
+	<update id="fileDelUpdate" parameterType="map">
+		UPDATE NSF_ATTACH_FILE_INFO SET
+			  LAST_UPDATE_DATE = SYSDATE
+			, LAST_UPDATED_BY_EMP_NO = #{sBox.userId}
+			, DELETE_FLAG = 'Y'
+			, DELETE_DATE = SYSDATE
+		WHERE FILE_ID = #{fileId}
+	</update>
+
+	<!-- 참조키로 첨부파일 삭제상태로 변경 -->
+	<update id="fileRefDelUpdate" parameterType="map">
+		UPDATE NSF_ATTACH_FILE_INFO SET
+			  LAST_UPDATE_DATE = SYSDATE
+			, LAST_UPDATED_BY_EMP_NO = #{sBox.userId}
+			, DELETE_FLAG = 'Y'
+			, DELETE_DATE = SYSDATE
+		WHERE FILE_GROUP = #{fileGroup}
+		AND REF_NO = #{refNo}
+	</update>
+
+	<!-- 첨부파일 물리적 삭제상태로 변경 -->
+	<update id="fileRealDelUpdate" parameterType="map">
+		UPDATE NSF_ATTACH_FILE_INFO SET
+			  LAST_UPDATE_DATE = SYSDATE
+			, LAST_UPDATED_BY_EMP_NO = #{sBox.userId}
+			, SYS_DELETE_FLAG = 'Y'
+			, DELETE_DATE = SYSDATE
+		WHERE FILE_ID = #{fileId}
+	</update>
+
+	<!-- 첨부파일 다운로드 횟수 증가 -->
+	<update id="fileDownUpdate" parameterType="map">
+		UPDATE NSF_ATTACH_FILE_INFO SET
+			  LAST_UPDATE_DATE = SYSDATE
+			, LAST_UPDATED_BY_EMP_NO = #{sBox.userId}
+			, DOWNLOAD_COUNT = DOWNLOAD_COUNT + 1
+		<where>
+			<if test='fileId != null and fileId != ""'>
+				AND FILE_ID = #{fileId}
+			</if>
+			<if test='fileId == null or fileId == ""'>
+				AND FILE_GROUP = #{fileGroup}
+				AND REF_NO = #{refNo}
+			</if>
+		</where>
+	</update>
+
+	<!-- 첨부파일 다운로드 횟수 증가(참조키) -->
+<!-- 	<update id="fileRefDownUpdate" parameterType="map"> -->
+<!-- 		UPDATE NSF_ATTACH_FILE_INFO SET -->
+<!-- 			  LAST_UPDATE_DATE = SYSDATE -->
+<!-- 			, LAST_UPDATED_BY_EMP_NO = #{sBox.userId} -->
+<!-- 			, DOWNLOAD_COUNT = DOWNLOAD_COUNT + 1 -->
+<!-- 		WHERE FILE_GROUP = #{fileGroup} -->
+<!-- 		AND REF_NO = #{refNo} -->
+<!-- 	</update> -->
+
+	<!-- 첨부파일 삭제 (not used) -->
+	<delete id="fileDelete" parameterType="map">
+		DELETE FROM NSF_ATTACH_FILE_INFO
+		<where>
+			<if test='fileId != null and fileId != ""'>
+				AND FILE_ID = #{fileId}
+			</if>
+			<if test='fileId == null or fileId == ""'>
+				AND FILE_GROUP = #{fileGroup}
+				AND REF_NO = #{refNo}
+			</if>
+		</where>
+	</delete>
+
+	<!-- 배치스케즐 목록 -->
+	<select id="scheduleList" parameterType="map" resultType="box">
+		SELECT A.SCHEDULE_ID /*NO_LOG*/
+			 , A.SCHEDULE_NAME
+			 , A.DESCRIPTION
+			 , A.CLASS_NAME
+			 , A.METHOD_NAME
+			 , A.CRON
+			 , A.SYSTEM_ID
+			 , A.ENABLED_FLAG
+		FROM SCHEDULE A
+		WHERE A.ENABLED_FLAG = 'Y'
+		AND A.SYSTEM_ID = '1'
+		ORDER BY SCHEDULE_ID ASC
+	</select>
+
+	<!-- 사용자 조회-->
+	<select id="userList" parameterType="map" resultType="box">
+		SELECT
+				  U.USER_ID
+				, U.USER_NAME
+				, AP.JOB_TITLE /* 직위 */
+				, AP.ATTRIBUTE15 AS TEAM /* 소속팀 */
+		FROM NSF_USERS U
+		   , APPS.NEX1_ALL_PEOPLE AP
+		WHERE U.USER_ID = AP.EMPLOYEE_NUMBER(+)
+		AND U.ENABLED_FLAG = 'Y'
+		<if test='srchUserId != null and srchUserId != ""'>
+			AND U.USER_ID LIKE '%' || UPPER(#{srchUserId}) || '%'
+		</if>
+		<if test='srchUserName != null and srchUserName != ""'>
+			AND U.USER_NAME LIKE '%' || #{srchUserName} || '%'
+		</if>
+		ORDER BY U.USER_ID
+	</select>
+
+	<!-- 화면정보 조회(단건) -->
+	<select id="srnInf" resultType="box">
+		SELECT SRN_ID
+		     , SRN_NM
+		     , SRN_URL
+		     , CNT_PGM_DV_C
+		     , VUEJS_SRN_DV_C
+		     , OS_RSLT_CLSF_CRI_C
+		     , SRN_HTML_TIT_NM
+		     , SRN_HTML_KEYW_CN
+		     , SRN_HTML_EPL_CN
+		     , APP_C
+		     , MAI_SRN_ID
+		     , USE_YN
+		  FROM POOMTBPFM016
+		 WHERE USE_YN = 'Y'
+		   AND SRN_ID = #{srnId}
+	</select>
+
+	<!-- 화면정보전체조회(다건) -->
+	<select id="srnList" resultType="box">
+		SELECT SRN_ID
+		     , SRN_NM
+		     , SRN_URL
+		     , CNT_PGM_DV_C
+		     , VUEJS_SRN_DV_C
+		     , OS_RSLT_CLSF_CRI_C
+		     , SRN_HTML_TIT_NM
+		     , SRN_HTML_KEYW_CN
+		     , SRN_HTML_EPL_CN
+		     , APP_C
+		     , MAI_SRN_ID
+		     , USE_YN
+		  FROM POOMTBPFM016
+		 WHERE USE_YN = 'Y'
+	</select>
+
+	<!-- 프로필이미지 저장(수정) -->
+	<insert id="prflInsert" parameterType="map">
+		INSERT INTO POMBTBPFM009 (
+		      MNM_CST_MNGT_NO /* 고객관리번호 */
+		    , MNM_PRFL_NCKNME /* 프로필별명암호화 */
+		    , MNM_PRFL_IMG_CN /* 프로필이미지내용 */
+		    , SYS_FST_RG_TS /* 시스템최초등록상세일시 */
+		    , SYS_FST_RG_USID /* 시스템최초등록사용자ID */
+		    , SYS_LT_CH_TS /* 시스템최종변경상세일시 */
+		    , SYS_LT_CH_USID /* 시스템최종변경사용자ID */
+
+		) VALUES (
+		      #{sBox.mnmCstMngtNo}
+		    , #{mnmPrflNcknme}
+		    , #{mnmPrflImgCn}
+		    , now()
+		    , #{sBox.mnmCstMngtNo}
+		    , now()
+		    , #{sBox.mnmCstMngtNo}
+		)
+		ON DUPLICATE KEY UPDATE
+		    <if test='mnmPrflImgCn != null and mnmPrflImgCn != ""'>
+		        MNM_PRFL_IMG_CN = #{mnmPrflImgCn},
+		    </if>
+		    <if test='mnmPrflNcknme != null and mnmPrflNcknme != ""'>
+			    MNM_PRFL_NCKNME = #{mnmPrflNcknme},
+		    </if>
+		    SYS_LT_CH_TS = now(3),
+		    SYS_LT_CH_USID = #{sBox.mnmCstMngtNo}
+	</insert>
+
+	<!-- 내 추천고객인지 조회 -->
+	<select id="rcmrSelect" resultType="box">
+		SELECT MNM_CST_MNGT_NO
+		  FROM POMBTBPFM011
+		 WHERE MNM_CST_MNGT_NO = #{mnmCstMngtNo}
+		   AND MNM_J_RCMR_CST_MNGT_NO = #{mnmJRcmrCstMngtNo}
+	</select>
+
+	<!-- 프로필 이미지 조회 -->
+	<select id="prflSelect" resultMap="prflResultBox">
+		SELECT MNM_PRFL_IMG_CN
+		  FROM POMBTBPFM009
+		 WHERE MNM_CST_MNGT_NO = #{mnmCstMngtNo}
+	</select>
+
+	<select id="apiSettingList" parameterType="box" resultType="box">
+		SELECT /*NO_LOG*/
+			 ID
+			,TITLE
+			,VALUE
+			,ATTR_01
+			,ATTR_01
+			,TYPE
+		FROM API_SETTING
+		WHERE TITLE IN
+		<foreach item="item" collection="title" open="(" separator="," close=")">
+	        #{item}
+		</foreach>
+	</select>
+
+	<select id="pushNotiFollowList" parameterType="map" resultType="box">
+		SELECT
+			  F.SENDER_ID
+			, (SELECT U3.USERNAME FROM USER U3 WHERE U3.ID = F.SENDER_ID) AS SENDER_USER_NAME
+		    , F.RECEIVER_ID
+		    , F.NOTIFICATION
+			, (SELECT DEVICE_TOKEN FROM USER AS U2 WHERE ID = F.SENDER_ID) AS DEVICE_TOKEN
+		FROM FOLLOWER F
+		LEFT JOIN USER U
+		ON U.ID = F.RECEIVER_ID
+		WHERE F.RECEIVER_ID = #{userId}
+		AND F.NOTIFICATION = 1
+		AND F.SENDER_ID  NOT IN  (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID = #{userId})
+	</select>
+
+	<select id="videoUsrCmnPush" parameterType="map" resultType="box">
+		SELECT
+			  (SELECT USERNAME FROM USER WHERE ID = #{userId}) AS SEND_USER_NM
+			, TV.USER_ID AS RECIVE_ID
+			, (SELECT U.DEVICE_TOKEN FROM USER U WHERE U.ID = TV.USER_ID) AS DEVICE_TOKEN
+		FROM VIDEO AS TV
+		WHERE ID = #{videoId}
+	</select>
+
+	<select id="postUsrCmnPush" parameterType="map" resultType="box">
+		SELECT
+			  (SELECT USERNAME FROM USER WHERE ID = #{userId}) AS SEND_USER_NM
+			, P.USER_ID AS RECIVE_ID
+			, (SELECT U.DEVICE_TOKEN FROM USER U WHERE U.ID = P.USER_ID) AS DEVICE_TOKEN
+		FROM POST AS P
+		WHERE ID = #{postId}
+	</select>
+
+	<select id="videoUsrReplyCmnPush" parameterType="map" resultType="box">
+		SELECT
+			  (SELECT U.USERNAME FROM USER AS U WHERE U.ID = #{userId}) AS SEND_USER_NM
+			, (SELECT U2.DEVICE_TOKEN FROM USER AS U2 WHERE U2.ID = TVC.USER_ID)  AS DEVICE_TOKEN
+			, TVC.USER_ID AS RECIVE_ID
+		FROM VIDEO_COMMENT TVC
+		WHERE TVC.ID = #{commentId}
+	</select>
+
+	<select id="postUsrReplyCmnPush" parameterType="map" resultType="box">
+		SELECT
+			  (SELECT U.USERNAME FROM USER AS U WHERE U.ID = #{userId}) AS SEND_USER_NM
+			, (SELECT U2.DEVICE_TOKEN FROM USER AS U2 WHERE U2.ID = TVC.USER_ID)  AS DEVICE_TOKEN
+			, TVC.USER_ID AS RECIVE_ID
+		FROM POST_COMMENT TVC
+		WHERE TVC.ID = #{commentId}
+	</select>
+
+	<select id="videoUsrSecReplyCmnPush" parameterType="map" resultType="box">
+		SELECT
+			  TVCR.ID
+			, (SELECT U.USERNAME FROM USER AS U WHERE U.ID = #{userId}) AS SEND_USER_NM
+			, (SELECT U2.DEVICE_TOKEN FROM USER AS U2 WHERE U2.ID = TVCR.USER_ID)  AS DEVICE_TOKEN
+			, TVCR.USER_ID AS RECIVE_ID
+		FROM VIDEO_COMMENT_REPLY TVCR
+		WHERE TVCR.VIDEO_ID = #{videoId}
+		AND TVCR.COMMENT_ID = #{commentId}
+		AND TVCR.REPLY_COMMENT_ID = #{replyCommentId}
+	</select>
+
+	<select id="postUsrSecReplyCmnPush" parameterType="map" resultType="box">
+		SELECT
+			  TVCR.ID
+			, (SELECT U.USERNAME FROM USER AS U WHERE U.ID = #{userId}) AS SEND_USER_NM
+			, (SELECT U2.DEVICE_TOKEN FROM USER AS U2 WHERE U2.ID = TVCR.USER_ID)  AS DEVICE_TOKEN
+			, TVCR.USER_ID AS RECIVE_ID
+		FROM POST_COMMENT_REPLY TVCR
+		WHERE TVCR.POST_ID = #{postId}
+		AND TVCR.COMMENT_ID = #{commentId}
+		AND TVCR.ID = #{replyCommentId}
+	</select>
+
+	<select id="followSendPush" parameterType="map" resultType="box">
+		SELECT
+			  (SELECT DEVICE_TOKEN FROM USER WHERE ID = A.RECEIVER_ID) AS DEVICE_TOKEN
+			, (SELECT USERNAME FROM USER WHERE ID = #{userId}) AS SEND_USER_NM
+			, A.RECEIVER_ID
+		FROM FOLLOWER A
+		WHERE A.SENDER_ID = #{userId}
+		AND A.RECEIVER_ID = #{targetId}
+	</select>
+
+	<select id="tokenUserInfoView" parameterType="box" resultType="box">
+		SELECT
+			id
+		    ,role
+		    ,first_name
+		    ,last_name
+		    ,email
+		    ,username
+		    ,profile_pic
+		    ,profile_pic_small
+		FROM
+			USER
+		<where>
+			<if test='encType != null and encType == "email"'>
+				AND email = #{encTxt}
+			</if>
+
+			<if test='encType != null and encType == "name"'>
+				AND username = #{encTxt}
+			</if>
+
+			<if test='encType != null and encType == "phone"'>
+				AND phone = #{encTxt}
+			</if>
+		</where>
+
+	</select>
+
+	<resultMap id="prflResultBox" type="box">
+		<result property="mnmPrflImgCn" javaType="_byte[]" column="MNM_PRFL_IMG_CN" jdbcType="BLOB" />
+	</resultMap>
+
+	<insert id="pushInfoInsert" parameterType="map">
+	INSERT INTO NOTIFICATION (
+		  SENDER_ID
+		, RECEIVER_ID
+		, STRING
+		, `TYPE`
+		, VIDEO_ID
+		, POST_ID
+		, ISREAD
+		, REG_ID
+		, REG_DT
+		, MOD_ID
+		, MOD_DT
+	)VALUES(
+		  #{senderId}
+		, #{receiverId}
+		, #{string}
+		, #{type}
+		, #{videoId}
+		, #{postId}
+		, 0
+		, #{senderId}
+		, NOW()
+		, #{senderId}
+		, NOW()
+	)
+	</insert>
+
+	<!-- text 필터  -->
+	<select id="setFilterView" resultType="String">
+		SELECT TEXT
+		FROM SETTING
+	</select>
+</mapper>
+

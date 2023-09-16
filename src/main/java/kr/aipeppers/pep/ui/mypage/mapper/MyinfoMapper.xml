@@ -1,0 +1,2102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mypage.myinfo">
+
+	<sql id="srchFollow">
+		<if test='keyword != null and keyword != ""'>
+			AND U.USERNAME LIKE CONCAT('%',#{keyword},'%')
+		</if>
+	</sql>
+	<!-- 회원 정보 PK 조회-->
+	<select id="userView" parameterType="map" resultType="box">
+		SELECT
+			  US.ID
+			, US.USERNAME
+			, US.ROLE
+			, US.FIRST_NAME
+			, US.LAST_NAME
+			, US.GENDER
+			, US.EMAIL
+			, US.PHONE
+			, US.PROFILE_PIC
+			, US.PROFILE_PIC_SMALL
+			, DATE_FORMAT(US.REG_DT, '%Y-%m-%d %T') AS REG_DT
+		FROM USER AS US
+		WHERE US.ID = #{otherUserId}
+	</select>
+
+	<select id="videoHashtagList" parameterType="map" resultType="String">
+	SELECT (SELECT REPLACE(NAME,'#','') FROM HASHTAG TH WHERE TH.ID = THV.HASHTAG_ID) AS HASHTAG_NAME
+	FROM HASHTAG_VIDEO THV
+	WHERE VIDEO_ID = #{id}
+	</select>
+
+	<!--블럭 체크  -->
+	<select id="blockUsrChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BLOCK_USER
+		WHERE USER_ID = #{sBox.id}
+		AND BLOCK_USER_ID = #{targetId}
+	</select>
+
+	<select id="followChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE SENDER_ID = #{sBox.id}
+		AND RECEIVER_ID = #{targetId}
+	</select>
+
+	<select id="favoruiteCount" parameterType="map" resultType="int">
+		SELECT
+			concat(a+b+c)
+		FROM
+		(
+		SELECT
+			(SELECT COUNT(id) FROM VIDEO_FAVOURITE WHERE USER_ID = #{sBox.id})  a
+			,(SELECT COUNT(id) FROM PLAYER_FAVOURITE WHERE USER_ID = #{sBox.id}) b
+			,(SELECT COUNT(id) FROM HASHTAG_FAVOURITE WHERE USER_ID =  #{sBox.id}) c
+		FROM dual) T
+	</select>
+
+	<select id="videoCntView" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO
+		WHERE USER_ID = #{otherUserId}
+		AND VIDEO_ACTIVE = 1
+	</select>
+
+	<select id="userLikeAllCnt" parameterType="map" resultType="int">
+		SELECT SUM(CNT) AS TOTAL_LIKES
+		FROM (
+			SELECT USER_ID , COUNT(*) AS CNT FROM POST_COMMENT_LIKE WHERE USER_ID = #{otherUserId}
+			UNION ALL
+			SELECT USER_ID , COUNT(*) AS CNT FROM POST_LIKE WHERE USER_ID = #{otherUserId}
+			UNION ALL
+			SELECT USER_ID , COUNT(*) AS CNT FROM VIDEO_COMMENT_LIKE WHERE USER_ID = #{otherUserId}
+			UNION ALL
+			SELECT USER_ID , COUNT(*) AS CNT FROM VIDEO_LIKE WHERE USER_ID = #{otherUserId}
+			UNION ALL
+			SELECT USER_ID , COUNT(*) AS CNT FROM POST_COMMENT_REPLY_LIKE WHERE USER_ID = #{otherUserId}
+			UNION ALL
+			SELECT USER_ID , COUNT(*) AS CNT FROM VIDEO_COMMENT_REPLY_LIKE WHERE USER_ID = #{otherUserId}
+		) AS COMBINED_TABLES
+		WHERE USER_ID IS NOT NULL
+		GROUP BY USER_ID
+	</select>
+
+	<!-- 팔로잉 여부 조회-->
+	<select id="followingChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE RECEIVER_ID = #{sBox.id}
+		AND SENDER_ID = #{otherUserId}
+	</select>
+
+	<!-- 팔로워 여부 조회-->
+	<select id="followerChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE SENDER_ID = #{sBox.id}
+		AND RECEIVER_ID = #{otherUserId}
+	</select>
+
+	<!-- 팔로잉 총갯수-->
+	<select id="followingCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE  SENDER_ID = #{sBox.id}
+	</select>
+
+	<!-- 팔로워 총갯수-->
+	<select id="followerCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE RECEIVER_ID = #{sBox.id}
+	</select>
+
+	<!-- 비디오 like 총갯수-->
+	<select id="myBoardCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO TV
+		LEFT JOIN POST TP
+		ON TV.USER_ID = TP.USER_ID
+		WHERE TV.VIDEO_ACTIVE = 1
+		AND TP.POST_ACTIVE = 1
+		AND TV.USER_ID = #{sBox.id}
+	</select>
+
+	<!-- 나를 차단한 other User check -->
+	<select id="otherBlockChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BLOCK_USER
+		WHERE USER_ID = #{otherUserId}
+		AND BLOCK_USER_ID = #{sBox.id}
+	</select>
+
+	<!-- 내가 차단한 other User check -->
+	<select id="myBlockChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BLOCK_USER
+		WHERE USER_ID = #{sBox.id}
+		AND BLOCK_USER_ID = #{otherUserId}
+	</select>
+
+	<!-- 비디오 리스트 -->
+	<select id="showVideoCommentsList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+			SELECT
+				  ROW_NUMBER() OVER(ORDER BY ID ASC) AS RNUM
+				, ID
+				, USER_ID
+				, VIDEO_ID
+				, COMMENT
+				, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+				, COMMENT_ACTIVE
+			FROM VIDEO_COMMENT
+			WHERE VIDEO_ID = #{videoId}
+			AND COMMENT_ACTIVE = 1
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="showVideoCommentsCnt" parameterType="map" resultType="int">
+		 SELECT
+			COUNT(*) as cnt
+		FROM VIDEO_COMMENT TVC
+		WHERE 1=1
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+		AND VIDEO_ID = #{videoId}
+	</select>
+
+
+	<!-- 해시태그 리스트 -->
+	<select id="myFavouriteHashtagsList" parameterType="map" resultType="box">
+		SELECT
+			  H.ID
+			, H.NAME
+			, H.REG_DT
+			, H.REG_ID
+			, H.MOD_ID
+			, H.MOD_DT
+			, COUNT(VIDEO.ID) AS VIDEO_CNT
+		FROM HASHTAG H
+		INNER JOIN HASHTAG_FAVOURITE HF
+		ON HF.HASHTAG_ID = H.ID AND HF.USER_ID = #{sBox.id}
+		LEFT JOIN HASHTAG_VIDEO VIDEO
+		ON H.ID = VIDEO.HASHTAG_ID
+		GROUP BY H.ID
+	</select>
+
+	<!-- 내가 선택한 영상 -->
+	<select id="showVideoDetailView" parameterType="map" resultType="box">
+			SELECT
+				  V.ID
+				, V.USER_ID
+				, V.DESCRIPTION
+				, V.VIDEO
+				, V.THUM
+				, V.GIF
+				, V.VIDEO_ACTIVE
+				, V.VIEW
+				, V.SECTION
+				, V.SOUND_ID
+				, V.PRIVACY_TYPE
+				, V.ALLOW_COMMENTS
+				, V.ALLOW_DUET
+				, V.BLOCK
+				, V.DUET_VIDEO_ID
+				, V.OLD_VIDEO_ID
+				, V.DURATION
+				, V.PROMOTE
+				, DATE_FORMAT(V.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+				, ( SELECT  COUNT(*) AS CNT
+					FROM VIDEO_LIKE
+				 	WHERE VIDEO_ID = #{videoId}
+				 	AND USER_ID = #{sBox.id}
+				  ) AS `LIKE`
+				, ( SELECT COUNT(*) AS CNT
+				 	FROM VIDEO_FAVOURITE
+				 	WHERE VIDEO_ID = #{videoId}
+				 	AND USER_ID = #{sBox.id}
+				 	) AS FAVOURITE
+				, ( SELECT COUNT(*) AS CNT
+					FROM VIDEO_LIKE
+				 	WHERE VIDEO_ID = #{videoId}
+				 	) AS LIKE_COUNT
+				, ( SELECT COUNT(*) AS CNT
+				 	FROM VIDEO_COMMENT
+				 	WHERE VIDEO_ID = #{videoId}
+				 	) AS COMMENT_COUNT
+			FROM VIDEO V
+			WHERE V.VIDEO_ACTIVE = '1'
+			AND V.ID =  #{videoId}
+	</select>
+
+
+
+	<!-- 나의 댓글 리스트 -->
+	<select id="myCommentsList" parameterType="map" resultType="box">
+		SELECT
+			  TPC.ID
+			, TPC.POST_ID
+			, TPC.USER_ID
+			, TPC.COMMENT
+			, NULL AS VIDEO_ID
+			, (SELECT TP.`TYPE` FROM POST AS TP WHERE TP.ID = TPC.POST_ID ) AS COMMENT_TYPE
+			, 'comment' AS COMMENT_REPLY_COMFIRM
+			, TPC.COMMENT_ACTIVE
+			, (CASE WHEN (SELECT COUNT(*) FROM POST_COMMENT_LIKE TPCL WHERE TPCL.ID = TPC.ID) > 0 THEN 'Y'
+				    WHEN  (SELECT COUNT(*) FROM POST_COMMENT_LIKE TPCL WHERE TPCL.ID = TPC.ID) = 0 THEN 'N'
+				END
+			   )AS IS_LIKE
+			, (SELECT COUNT(*) FROM POST_COMMENT_LIKE TPCL WHERE TPCL.COMMENT_ID = TPC.ID) AS LIKE_COUNT
+			, (	 CASE WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, TPC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, TPC.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TPC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, TPC.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TPC.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, TPC.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(TPC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM POST_COMMENT TPC
+		LEFT JOIN POST AS TPM
+		ON TPM.ID  = TPC.POST_ID
+		WHERE TPC.USER_ID  = #{sBox.id}
+		AND TPM.POST_ACTIVE = 1
+		AND (SELECT TP.`TYPE` FROM POST AS TP WHERE TP.ID = TPC.POST_ID ) NOT IN (CASE WHEN (SELECT ROLE FROM USER UM WHERE UM.ID = TPC.USER_ID) = 'player' THEN ''
+		  					  														  	  WHEN (SELECT ROLE FROM USER UM WHERE UM.ID = TPC.USER_ID) = 'user' THEN 'fan_post'
+			  																		 END )
+		UNION ALL
+		SELECT
+			  TPCR.ID
+			, TPCR.POST_ID
+			, TPCR.USER_ID
+			, TPCR.COMMENT
+			, NULL AS VIDEO_ID
+			, (SELECT TP.`TYPE` FROM POST AS TP WHERE TP.ID = TPCR.POST_ID) AS COMMENT_TYPE
+			, ( CASE WHEN TPCR.REPLY_COMMENT_ID IS NULL THEN 'reply'
+				     WHEN TPCR.REPLY_COMMENT_ID IS NOT NULL THEN 'reply_reply'
+				 END ) AS  COMMENT_REPLY_COMFIRM
+			, TPCR.COMMENT_ACTIVE
+			, (CASE WHEN (SELECT COUNT(*) FROM POST_COMMENT_REPLY_LIKE TPCRL WHERE TPCRL.ID = TPCR.ID) > 0 THEN 'Y'
+				    WHEN  (SELECT COUNT(*) FROM POST_COMMENT_REPLY_LIKE TPCRL WHERE TPCRL.ID = TPCR.ID) = 0 THEN 'N'
+				END
+			   )AS IS_LIKE
+			, (SELECT COUNT(*) FROM POST_COMMENT_REPLY_LIKE TPCRL WHERE TPCRL.ID = TPCR.ID) AS LIKE_COUNT
+			, (	 CASE WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, TPCR.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, TPCR.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TPCR.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, TPCR.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TPCR.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, TPCR.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '일전에 등록됨')
+					  WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '주전에 등록됨')
+					  WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '달전에 등록됨')
+					  WHEN DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(TPCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '년전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM POST_COMMENT_REPLY	TPCR
+		LEFT JOIN POST AS TPM
+		ON TPM.ID  = TPCR.POST_ID
+		WHERE TPCR.USER_ID = #{sBox.id}
+		AND TPM.POST_ACTIVE = 1
+		AND (SELECT TP.`TYPE` FROM POST AS TP WHERE TP.ID = TPCR.POST_ID ) NOT IN (CASE WHEN (SELECT ROLE FROM USER UM WHERE UM.ID = TPCR.USER_ID) = 'player' THEN ''
+			  					   														   WHEN (SELECT ROLE FROM USER UM WHERE UM.ID = TPCR.USER_ID) = 'user' THEN 'fan_post'
+																  					  END )
+		UNION ALL
+		SELECT
+			  TVC.ID
+			, NULL AS POST_ID
+			, TVC.USER_ID
+			, TVC.COMMENT
+			, TVC.VIDEO_ID
+			, (CASE WHEN (SELECT USER_ID FROM VIDEO WHERE ID = TVC.ID) =  #{sBox.id} THEN "video"
+					ELSE "my_video"
+				END) AS COMMENT_TYPE
+			, 'comment' AS COMMENT_REPLY_COMFIRM
+			, TVC.COMMENT_ACTIVE
+			, (CASE WHEN (SELECT COUNT(*) FROM VIDEO_COMMENT_LIKE TVCL WHERE TVCL.ID = TVC.ID) > 0 THEN 'Y'
+				    WHEN  (SELECT COUNT(*) FROM VIDEO_COMMENT_LIKE TVCL WHERE TVCL.ID = TVC.ID) = 0 THEN 'N'
+				END
+			   )AS IS_LIKE
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_LIKE TVCL WHERE TVCL.COMMENT_ID = TVC.ID) AS LIKE_COUNT
+			, (	 CASE WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, TVC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, TVC.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TVC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, TVC.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TVC.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, TVC.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '일전에 등록됨')
+					  WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '주전에 등록됨')
+					  WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '달전에 등록됨')
+					  WHEN DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(TVC.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '년전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM VIDEO_COMMENT TVC
+		LEFT JOIN VIDEO AS TVM
+		ON TVM.ID = TVC.VIDEO_ID
+		WHERE TVC.USER_ID = #{sBox.id}
+		AND TVM.VIDEO_ACTIVE = 1
+		UNION ALL
+		SELECT
+			  TVCR.ID
+			, NULL AS POST_ID
+			, TVCR.USER_ID
+			, TVCR.COMMENT
+			, TVCR.VIDEO_ID
+			, (CASE WHEN (SELECT USER_ID FROM VIDEO WHERE ID = TVCR.ID) = #{sBox.id} THEN "video"
+					ELSE "my_video"
+				END) AS COMMENT_TYPE
+			, ( CASE WHEN TVCR.REPLY_COMMENT_ID IS NULL THEN 'reply'
+				     WHEN TVCR.REPLY_COMMENT_ID IS NOT NULL THEN 'reply_reply'
+				 END ) AS  COMMENT_REPLY_COMFIRM
+			, TVCR.COMMENT_ACTIVE
+			, (CASE WHEN (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVCRL WHERE TVCRL.ID = TVCR.ID) > 0 THEN 'Y'
+				    WHEN  (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVCRL WHERE TVCRL.ID = TVCR.ID) = 0 THEN 'N'
+				END
+			   )AS IS_LIKE
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVCRL WHERE TVCRL.ID = TVCR.ID) AS LIKE_COUNT
+			, (	 CASE WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, TVCR.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, TVCR.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TVCR.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, TVCR.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, TVCR.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, TVCR.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d'))) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(TVCR.REG_DT , '%Y-%m-%d'), DATE_FORMAT(NOW() , '%Y-%m-%d')), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM VIDEO_COMMENT_REPLY	TVCR
+		LEFT JOIN VIDEO AS TVM
+		ON TVM.ID = TVCR.VIDEO_ID
+		WHERE TVCR.USER_ID = #{sBox.id}
+		AND TVM.VIDEO_ACTIVE = 1
+		ORDER BY DIFF_DATE ASC
+	</select>
+
+	<select id="videoInfoView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, DESCRIPTION
+			, VIDEO_ACTIVE
+			, BLOCK
+		FROM VIDEO
+		WHERE ID = #{videoId}
+		AND VIDEO_ACTIVE = 1
+	</select>
+
+	<select id="comentUserInfo" parameterType="String" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, ROLE
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+		FROM USER
+		WHERE ID = #{userId}
+		AND ACTIVE = 1
+	</select>
+
+	<select id="postInfoView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, TYPE
+			, USER_ID
+			, TARGET_ID
+			, TITLE
+			, CONTENTS
+			, POST_ACTIVE
+			, POST_ACTIVE_DATE
+			, BLOCK
+			, REG_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM POST
+		WHERE ID = #{postId}
+		AND POST_ACTIVE = 1
+	</select>
+
+	<select id="myCommentsUser" parameterType="map" resultType="box">
+		SELECT
+			 ID,
+			 USERNAME,
+			 ROLE,
+			 PROFILE_PIC,
+			 PROFILE_PIC_SMALL
+		FROM USER
+		WHERE ID = #{userId}
+	</select>
+
+	<!-- 쇼페퍼 리스트 -->
+	<select id="myFavouriteVideosList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+			SELECT
+				  ROW_NUMBER() OVER(ORDER BY V.ID ASC) AS RNUM
+				, V.ID
+				, V.USER_ID
+			FROM VIDEO V
+			WHERE V.VIDEO_ACTIVE = '1'
+			AND V.USER_ID = #{otherUserId}
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<!-- 쇼페퍼 view -->
+	<select id="myFavouriteVideosView" parameterType="map" resultType="box">
+			SELECT
+				  V.ID
+				, V.USER_ID
+				, V.DESCRIPTION
+				, V.VIDEO AS VIDEO_URL
+				, V.THUM
+				, V.GIF
+				, V.VIDEO_ACTIVE
+				, V.VIEW
+				, V.SECTION
+				, V.SOUND_ID
+				, V.PRIVACY_TYPE
+				, V.ALLOW_COMMENTS
+				, V.ALLOW_DUET
+				, V.BLOCK
+				, V.DUET_VIDEO_ID
+				, V.OLD_VIDEO_ID
+				, V.DURATION
+				, V.PROMOTE
+				, DATE_FORMAT(REG_DT , '%Y-%m-%d %H:%m:%s') AS REG_DT
+				, V.REG_ID
+				, V.MOD_ID
+				, DATE_FORMAT(MOD_DT , '%Y-%m-%d %H:%m:%s') AS MOD_DT
+				, ( SELECT  COUNT(*) AS CNT
+					FROM VIDEO_LIKE
+				 	WHERE VIDEO_ID = #{id}
+				 	AND USER_ID = #{userId}
+				  ) AS `LIKE`
+				, ( SELECT COUNT(*) AS CNT
+				 	FROM VIDEO_FAVOURITE
+				 	WHERE VIDEO_ID = #{id}
+				 	AND USER_ID = #{userId}
+				 	) AS FAVOURITE
+				, ( SELECT COUNT(*) AS CNT
+					FROM VIDEO_LIKE
+				 	WHERE VIDEO_ID = #{id}
+				 	) AS LIKE_COUNT
+				, ( SELECT COUNT(*) AS CNT
+				 	FROM VIDEO_COMMENT
+				 	WHERE VIDEO_ID = #{id}
+				 	) AS COMMENT_COUNT
+			FROM VIDEO V
+			WHERE V.VIDEO_ACTIVE = '1'
+			AND V.ID = #{id}
+	</select>
+
+	<select id="userInfoView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, DEVICE_TOKEN
+			, AUTH_TOKEN
+			, EMAIL
+			, PASSWORD
+			, PHONE
+			, ACTIVE
+			, ACTIVE_REASON
+			, ACTIVE_REASON_DETAIL
+			, USERNAME
+			, ROLE
+			, POINT
+			, GRADE
+			, FIRST_NAME
+			, LAST_NAME
+			, GENDER
+			, BIO
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, TOKEN
+			, IP
+			, LOCK_CNT
+			, PASS_CHN_YN
+			, PASS_MODIFY_DATETIME
+			, REG_ID
+			, DATE_FORMAT(REG_DT , '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM USER
+		WHERE ID = #{userId}
+		AND ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="videoReCommList" parameterType="map" resultType="box">
+		SELECT
+			  A.ID
+			, A.USER_ID
+			, A.REPLY_COMMENT_ID
+			, A.COMMENT_ID
+			, A.COMMENT_ACTIVE AS REPLY_COMMENT_ACTIVE
+			, (CASE WHEN (SELECT ACTIVE FROM `USER` WHERE ID= A.USER_ID) = 1 AND A.DEL_YN = 'N' THEN A.COMMENT
+					WHEN A.DEL_YN = 'Y' THEN '삭제된 댓글입니다.'
+					ELSE '탈퇴한 회원으로 블라인드 처리 되었습니다.'
+				END) AS COMMENT
+			, DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, (SELECT USERNAME FROM USER WHERE ID= A.USER_ID) REG_ID
+			, A.DEL_YN
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE WHERE COMMENT_ID = A.ID) AS LIKE_CNT
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVR WHERE TVR.COMMENT_ID = A.ID AND TVR.USER_ID = #{sBox.id}) AS IS_LIKE
+			, (	 CASE WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW()), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , A.REG_DT, NOW()), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) > 30 AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.REG_DT, NOW()), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, A.REG_DT, NOW()), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM VIDEO_COMMENT_REPLY A
+		WHERE COMMENT_ID = #{id}
+		ORDER BY REG_DT ASC
+	</select>
+
+	<select id="pushNotificationView" parameterType="map" resultType="box">
+		SELECT
+			  PN.ID
+			, PN.LIKES
+			, PN.COMMENTS
+			, PN.NEW_FOLLOWERS
+			, PN.MENTIONS
+			, PN.DIRECT_MESSAGES
+			, PN.VIDEO_UPDATES
+			, PN.POST_UPDATE
+			, PN.EVENT
+		FROM PUSH_NOTIFICATION PN
+		WHERE PN.ID = #{userId}
+	</select>
+
+
+	<select id="myTicketHistoryCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) as cnt
+			FROM INTERPARK_CODE_LIST
+		WHERE USER_ID = #{sBox.id}
+	</select>
+	<!-- 인터파크 코드 리스트  -->
+	<select id="myTicketHistoryList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			ROW_NUMBER() OVER(ORDER BY ID ASC) AS RNUM ,
+			ID,
+			CODE,
+			USED_DATE
+			FROM INTERPARK_CODE_LIST
+		WHERE USER_ID = #{sBox.id}
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="myFavouriteVideosCnt" parameterType="map" resultType="int">
+			SELECT
+					COUNT(*) AS cnt
+			FROM VIDEO V
+			WHERE 1=1
+			AND V.VIDEO_ACTIVE = '1'
+			AND V.USER_ID = #{otherUserId}
+	</select>
+
+	<!-- 북마크 영상 리스트  -->
+	<select id="showFavouriteFavouriteList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY TVF.ID ASC) AS RNUM
+			, TVF.ID
+			, TVF.USER_ID
+			, TVF.VIDEO_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM VIDEO_FAVOURITE TVF
+		WHERE (SELECT USER_ID
+		 	   FROM VIDEO
+		 	   WHERE ID = TVF.VIDEO_ID) NOT IN (SELECT TU.ID
+		 	   									FROM USER TU WHERE ID IN (SELECT BLOCK_USER_ID
+																		    FROM BLOCK_USER
+																		    WHERE USER_ID  = #{sBox.id}
+																		    )
+												AND ACTIVE not in (0,2))
+		AND (SELECT VIDEO_ACTIVE FROM VIDEO WHERE ID = TVF.VIDEO_ID) NOT IN (0,2)
+		AND USER_ID = #{sBox.id}
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<!-- 북마크 영상 리스트  -->
+	<select id="showFavouriteVideos" parameterType="map" resultType="box">
+		SELECT
+			 V.ID
+			, V.DESCRIPTION
+			, V.VIDEO
+			, V.THUM
+			, V.GIF
+			, V.USER_ID
+			, V.VIDEO_ACTIVE
+			, V.VIEW
+			, V.SECTION
+			, V.SOUND_ID
+			, V.PRIVACY_TYPE
+			, V.ALLOW_COMMENTS
+			, V.ALLOW_DUET
+			, V.BLOCK
+			, V.DUET_VIDEO_ID
+			, V.OLD_VIDEO_ID
+			, V.DURATION
+			, V.PROMOTE
+			, DATE_FORMAT(V.REG_DT, '%Y-%m-%d %H:%m:%s')AS REG_DT
+			, (SELECT COUNT(ID) FROM VIDEO_LIKE WHERE VIDEO_ID = V.ID AND USER_ID = #{sBox.id}) 'LIKE'
+			, (SELECT COUNT(ID) FROM VIDEO_FAVOURITE WHERE VIDEO_ID = V.ID) FAVOURITE
+			, (SELECT COUNT(ID) FROM VIDEO_COMMENT WHERE VIDEO_ID = V.ID ) COMMENT_COUNT
+			, (SELECT COUNT(ID) FROM VIDEO_LIKE WHERE VIDEO_ID = V.ID ) LIKE_COUNT
+		FROM VIDEO AS V
+		RIGHT JOIN USER AS U
+			ON U.ID = V.USER_ID
+			AND U.ACTIVE = 1
+		WHERE V.VIDEO_ACTIVE = '1'
+		AND V.ID = #{videoId}
+		AND V.USER_ID NOT IN (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID = #{sBox.id} )
+	</select>
+
+	<select id="commentList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, VIDEO_ID
+			, COMMENT
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s')AS REG_DT
+			, COMMENT_ACTIVE
+		FROM VIDEO_COMMENT
+		WHERE ID = #{videoId}
+		AND COMMENT_ACTIVE = 1
+	</select>
+
+	<select id="soundView" parameterType="map" resultType="box">
+		SELECT
+			  SO.ID
+			, SO.AUDIO
+			, SO.DURATION
+			, SO.NAME
+			, SO.DESCRIPTION
+			, SO.THUM
+			, SO.SOUND_SECTION_ID
+			, SO.UPLOADED_BY
+			, SO.PUBLISH
+			,  DATE_FORMAT(SO.REG_DT , '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM SOUND AS SO
+		WHERE SO.ID = #{soundId}
+	</select>
+
+	<select id="showFavouriteVideosCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_FAVOURITE TVF
+		WHERE (SELECT USER_ID
+		 	   FROM VIDEO
+		 	   WHERE ID = TVF.VIDEO_ID)  NOT IN (SELECT TU.ID
+		 	   									FROM USER TU WHERE ID IN (SELECT BLOCK_USER_ID
+																		    FROM BLOCK_USER
+																		    WHERE USER_ID  = #{sBox.id}
+																		    )
+												AND ACTIVE NOT IN (0,2))
+		AND (SELECT VIDEO_ACTIVE FROM VIDEO WHERE ID = TVF.VIDEO_ID) NOT IN (0,2)
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<!-- 좋아요 영상 리스트 -->
+	<select id="myLikedVideosList" parameterType="map" resultType="box">
+	<include refid="cmn.pageStr" />
+		SELECT
+			ROW_NUMBER() OVER(ORDER BY ROOT.ID ASC) AS RNUM,
+			ROOT.ID,
+			ROOT.USER_ID,
+			ROOT.DESCRIPTION,
+			ROOT.VIDEO,
+			ROOT.THUM,
+			ROOT.GIF,
+			ROOT.VIDEO_ACTIVE,
+			ROOT.VIEW,
+			ROOT.SECTION,
+			ROOT.SOUND_ID,
+			ROOT.PRIVACY_TYPE,
+			ROOT.ALLOW_COMMENTS,
+			ROOT.ALLOW_DUET,
+			ROOT.BLOCK,
+			ROOT.DUET_VIDEO_ID,
+			ROOT.OLD_VIDEO_ID,
+			ROOT.DURATION,
+			ROOT.PROMOTE,
+			DATE_FORMAT(ROOT.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT,
+			ROOT.REG_ID,
+			ROOT.MOD_ID,
+			DATE_FORMAT(ROOT.MOD_DT, '%Y-%m-%d %H:%m:%s') AS MOD_DT
+		FROM (SELECT
+					V.ID,
+					V.USER_ID,
+					V.DESCRIPTION,
+					V.VIDEO,
+					V.THUM,
+					V.GIF,
+					V.VIDEO_ACTIVE,
+					V.VIEW,
+					V.SECTION,
+					V.SOUND_ID,
+					V.PRIVACY_TYPE,
+					V.ALLOW_COMMENTS,
+					V.ALLOW_DUET,
+					V.BLOCK,
+					V.DUET_VIDEO_ID,
+					V.OLD_VIDEO_ID,
+					V.DURATION,
+					V.PROMOTE,
+					V.REG_DT,
+					V.REG_ID,
+					V.MOD_ID,
+					V.MOD_DT
+			FROM VIDEO V
+			LEFT JOIN VIDEO_LIKE VL
+			ON V.ID = VL.VIDEO_ID
+			WHERE V.VIDEO_ACTIVE = '1'
+			AND V.PRIVACY_TYPE = 'public'
+			AND VL.USER_ID = #{sBox.id}
+		) ROOT
+		LEFT JOIN BLOCK_USER BU
+		ON ROOT.USER_ID = BU.BLOCK_USER_ID
+		AND BU.USER_ID = #{sBox.id}
+		WHERE BU.BLOCK_USER_ID IS NULL
+		<include refid="cmn.pageEnd" />
+	</select>
+	<!-- 해시태그 영상 리스트 -->
+	<select id="showVideosAgainstHashtagList" parameterType="map" resultType="box">
+		SELECT
+			  THF.HASHTAG_ID
+			, THF.USER_ID
+		FROM HASHTAG_FAVOURITE THF
+		LEFT JOIN (SELECT HASHTAG_ID
+					FROM HASHTAG_VIDEO THV
+					LEFT JOIN VIDEO AS TV
+					ON THV.VIDEO_ID = TV.ID
+					AND TV.VIDEO_ACTIVE = 1) AS ROOT
+		ON THF.HASHTAG_ID  = ROOT.HASHTAG_ID
+		WHERE THF.USER_ID = #{sBox.id}
+		GROUP BY THF.HASHTAG_ID
+	</select>
+
+	<select id="myHashtagInfoView" parameterType="map" resultType="box">
+		SELECT
+			  TH.ID
+			, TH.NAME
+			, (SELECT COUNT(*) FROM HASHTAG_VIDEO THV WHERE THV.HASHTAG_ID = TH.ID) AS VIDEOS_COUNT
+			, (SELECT SUM(V.VIEW) FROM VIDEO AS V WHERE V.ID IN (SELECT THV.VIDEO_ID FROM HASHTAG_VIDEO THV WHERE THV.HASHTAG_ID = TH.ID )) AS VIEWS
+		FROM HASHTAG TH
+		WHERE ID = #{hashtagId}
+	</select>
+
+	<select id="hashtagFavouriteView" parameterType="map" resultType="box">
+		SELECT
+			HF.ID
+			, HF.USER_ID
+			, HF.HASHTAG_ID
+			, DATE_FORMAT(HF.REG_DT , '%Y-%M-%D %H:%M:%S') AS REG_DT
+		FROM HASHTAG_FAVOURITE HF
+		WHERE USER_ID = #{userId}
+		AND HASHTAG_ID = #{hashtagId}
+	</select>
+
+	<select id="myUserView" parameterType="map" resultType="box">
+		SELECT
+			  U.ID
+			, U.ACTIVE
+			, U.USERNAME
+			, U.ROLE
+			, U.GRADE
+			, U.PROFILE_PIC
+			, U.PROFILE_PIC_SMALL
+		FROM USER AS U
+		WHERE U.ID = #{userId}
+	</select>
+
+	<!-- FAQ 리스트 조회 -->
+	<select id="faqList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, TYPE_CD
+			, TITLE
+			, CONTENT
+			, HITS
+			, DEL_YN
+			, USE_YN
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		FROM FAQ
+		WHERE DEL_YN = 'N'
+		AND USE_YN = 'Y'
+		AND TYPE_CD = #{typeCd}
+	</select>
+
+	<!-- 내가 작성한 팬포스트 리스트-->
+	<select id="myFanPostList" parameterType="map" resultType="box">
+		SELECT
+	  		  ROOT.ID
+			, ROOT.TARGET_ID
+		FROM (SELECT
+					  POST.ID
+					, POST.TARGET_ID
+					, POST.REG_DT
+					FROM POST POST
+				LEFT JOIN USER PLAYER ON PLAYER.ID = POST.TARGET_ID
+				WHERE TYPE = 'fan_post'
+				AND POST.USER_ID = #{sBox.id}
+				AND POST.POST_ACTIVE = 1
+				AND PLAYER.ACTIVE = 1) ROOT
+		 LEFT JOIN BLOCK_USER TBU
+		 ON ROOT.TARGET_ID = TBU.BLOCK_USER_ID
+		 AND TBU.USER_ID = #{sBox.id}
+		 WHERE TBU.BLOCK_USER_ID IS NULL
+		 <choose>
+			<when test="order == 'LIKE'"> ORDER BY ROOT.LIKE_CNT DESC </when>
+			<otherwise> ORDER BY ROOT.REG_DT DESC </otherwise>
+		</choose>
+	</select>
+
+	<!-- 내가작성한팬포스트 이미지 -->
+	<select id="myFanPostImageList" parameterType="map" resultType="box">
+		SELECT
+			  IMG.ID
+			, IMG.post_id
+			, IMG.IMAGE_URL
+			, IMG.IMAGE_SIZE
+			, IMG.WIDTH
+			, IMG.HEIGHT
+			, IMG.REG_ID
+			, IMG.REG_DT
+			, IMG.MOD_ID
+			, IMG.MOD_DT
+		FROM POST_IMAGE IMG
+		WHERE IMG.POST_ID = #{postId}
+	</select>
+
+	<!-- 내가작성한팬포스트 -->
+	<select id="myFanPostView" parameterType="map" resultType="box">
+		SELECT
+					  POST.ID
+					, POST.TYPE
+					, POST.USER_ID
+					, POST.TARGET_ID
+					, POST.TITLE
+					, POST.CONTENTS
+					, DATE_FORMAT(POST.REG_DT , '%Y-%m-%d %H:%m:%s') AS REG_DT
+					, POST.POST_ACTIVE
+					, POST.POST_ACTIVE_DATE
+					, POST.BLOCK
+					, POST.REG_ID
+					, POST.MOD_ID
+					, POST.MOD_DT
+					, (SELECT COUNT(CM.ID) FROM POST_COMMENT CM WHERE CM.POST_ID = POST.ID AND CM.COMMENT_ACTIVE = 1  ) AS COMMENT_CNT
+					, (SELECT COUNT(PL.ID) FROM POST_LIKE PL WHERE PL.POST_ID = POST.ID  ) AS LIKE_CNT
+					, (	 CASE WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, POST.REG_DT, NOW()) <![CDATA[<]]>  60 THEN CONCAT(TIMESTAMPDIFF(SECOND, POST.REG_DT, NOW()), '초 전에 등록됨')
+							  WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, POST.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, POST.REG_DT, NOW()), '분 전에 등록됨')
+							  WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, POST.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, POST.REG_DT, NOW()), '시 전에 등록됨')
+							  WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, POST.REG_DT, NOW()))  <![CDATA[<]]>  14 THEN CONCAT(TIMESTAMPDIFF(DAY, POST.REG_DT, NOW()), ' 일 전에 등록됨')
+							  WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, POST.REG_DT, NOW()))  <![CDATA[<]]>  30  THEN CONCAT(TIMESTAMPDIFF(WEEK , POST.REG_DT, NOW()), ' 주 전에 등록됨')
+							  WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') <![CDATA[<=]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, POST.REG_DT, NOW())) >= 30 AND CONCAT(TIMESTAMPDIFF(DAY, POST.REG_DT, NOW())) <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, POST.REG_DT, NOW()), ' 달 전에 등록됨')
+							  WHEN DATE_FORMAT(POST.REG_DT , '%Y-%m-%d') <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, POST.REG_DT, NOW())) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, POST.REG_DT, NOW()), ' 년 전에 등록됨')
+						 END
+				 	  )AS DIFF_DATE
+					, IF(((SELECT COUNT(PL.ID) FROM POST_LIKE PL WHERE PL.POST_ID = POST.ID ) > 0), 'Y', 'N') AS LIKE_YN
+					FROM POST POST
+				LEFT JOIN USER PLAYER ON PLAYER.ID = POST.TARGET_ID
+				WHERE TYPE = 'fan_post'
+				AND POST.POST_ACTIVE = 1
+				AND PLAYER.ACTIVE = 1
+				AND POST.ID = #{id}
+	</select>
+	<!-- 내가작성한팬포스트 player -->
+	<select id="myFanPostPlayerView" parameterType="map" resultType="box">
+		SELECT
+			PLAYER.ID,
+			PLAYER.USERNAME,
+			PLAYER.ROLE,
+			PLAYER.PROFILE_PIC,
+			PLAYER.PROFILE_PIC_SMALL,
+			PLAYER.ACTIVE
+		FROM USER PLAYER
+		WHERE PLAYER.ID = #{targetId}
+	</select>
+
+	<!-- 포인트 적립 사용내역 리스트 조회 -->
+	<select id="myPointHistoryList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, USE_POINT
+			, POINT
+			, POINT_TYPE
+			, (SELECT CD_NM FROM DTL_CD WHERE CD = POINT_TYPE) AS POINT_TYPE_NM
+			, DESCRIPTION
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, REG_ID
+			, MOD_ID
+			, MOD_DT
+		FROM AI_POINT
+		WHERE USER_ID = #{sBox.id}
+		AND POINT_TYPE = #{pointType}
+	</select>
+	<select id="myPointHistoryCnt" parameterType="map" resultType="int">
+		SELECT
+			  COUNT(*) as cnt
+		FROM AI_POINT
+		WHERE USER_ID = #{sBox.id}
+		AND POINT_TYPE = #{pointType}
+	</select>
+
+	<!-- 이벤트 응모내역 리스트 조회 -->
+	<select id="myEventList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, EVENT_REL_ID
+			, EVENT_TYPE
+			, EVENT_DESC
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, REG_ID
+			, MOD_ID
+			, MOD_DT
+		FROM EVENT_APPLY_HISTORY
+		WHERE USER_ID = #{sBox.id}
+	</select>
+	<select id="myEventCnt" parameterType="map" resultType="int">
+		SELECT
+			  COUNT(*) as cnt
+		FROM EVENT_APPLY_HISTORY
+		WHERE USER_ID = #{sBox.id}
+	</select>
+
+	<!-- 이용약관 개인정보 처리 방침 -->
+	<select id="myHtmlPageView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, NAME
+			, TEXT
+			, REG_DT
+			, USE_YN
+			, REG_ID
+			, MOD_ID
+			, MOD_DT
+		FROM HTML_PAGE
+		WHERE NAME = #{name}
+		AND USE_YN = 'Y'
+	</select>
+
+	<!--팔로잉 조회  -->
+	<select id="followerList" parameterType="map" resultType="box">
+		SELECT
+			  F.ID as FOLLOW_ID
+		    , U.ID
+		    , U.USERNAME
+		    , U.FIRST_NAME
+		    , U.LAST_NAME
+		    , U.EMAIL
+		    , U.PROFILE_PIC
+		    , U.PROFILE_PIC_SMALL
+		FROM FOLLOWER F
+		LEFT JOIN USER U
+		ON F.RECEIVER_ID = U.ID
+		WHERE F.SENDER_ID = #{other_user_id }
+		AND U.ID NOT IN  (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID = #{other_user_id} )
+
+	</select>
+
+	<!--블럭 체크  -->
+	<select id="blockChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BLOCK_USER
+		WHERE USER_ID = #{id}
+		AND BLOCK_USER_ID = #{srchId}
+		AND MY_BLOCK = '0'
+	</select>
+
+	<select id="userInfoChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM USER
+		WHERE ID = #{otherUserId}
+		AND ACTIVE IN (0,2)
+	</select>
+	<!--팔로잉 조회  -->
+	<select id="followingList" parameterType="map" resultType="box">
+		SELECT
+			  F.ID as FOLLOW_ID
+		    , U.ID
+		    , U.USERNAME
+		    , U.FIRST_NAME
+		    , U.LAST_NAME
+		    , U.EMAIL
+		    , U.PROFILE_PIC
+		    , U.PROFILE_PIC_SMALL
+		FROM FOLLOWER F
+		LEFT JOIN USER U
+		ON F.SENDER_ID = U.ID
+		WHERE F.RECEIVER_ID = #{other_user_id}
+		AND U.ID NOT IN  (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID = #{other_user_id } )
+	</select>
+
+	<select id="referFriendList" parameterType="map" resultType="box">
+		SELECT
+			  U.ID
+		    , U.USERNAME
+		    , U.FIRST_NAME
+		    , U.LAST_NAME
+		    , U.GENDER
+		    , U.EMAIL
+		    , U.PHONE
+		    , U.ROLE
+		    , U.PROFILE_PIC
+		    , U.PROFILE_PIC_SMALL
+		    , DATE_FORMAT(U.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		    , (SELECT ID FROM FOLLOWER WHERE SENDER_ID = #{sBox.id} AND RECEIVER_ID = ID) AS FOLLOWER
+		FROM USER AS U
+		WHERE U.ROLE = 'user'
+    	AND U.ID != #{sBox.id} /*내 키값은 제외 */
+		AND U.ID NOT IN (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID = #{sBox.id}) /*블럭 유저 제외 */
+        AND U.ID NOT IN (SELECT SENDER_ID FROM FOLLOWER WHERE RECEIVER_ID = #{sBox.id}) /* 팔로우 유저 제외*/
+        AND U.ID NOT IN (SELECT BLOCK_ID FROM BLOCK_RECCOMAND_USER WHERE USER_ID = #{sBox.id})/*친구추천 삭제 제외*/
+        ORDER BY RAND() LIMIT 1, 20
+	</select>
+
+	<select id="referPlayerList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+		    , USERNAME
+		    , FIRST_NAME
+		    , LAST_NAME
+		    , GENDER
+		    , EMAIL
+		    , PHONE
+		    , ROLE
+		    , PROFILE_PIC
+		    , PROFILE_PIC_SMALL
+		    , DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		    , (SELECT ID FROM FOLLOWER WHERE SENDER_ID = #{sBox.id} AND RECEIVER_ID = ID) AS FOLLOWER
+		FROM USER
+		WHERE ROLE = 'player'
+    	AND ID != #{sBox.id} /*내 키값은 제외 */
+		AND ID NOT IN (SELECT BLOCK_USER_ID FROM BLOCK_USER WHERE USER_ID = #{sBox.id}) /*블럭 유저 제외 */
+        AND ID NOT IN (SELECT RECEIVER_ID FROM FOLLOWER WHERE SENDER_ID = #{sBox.id}) /* 팔로우 유저 제외*/
+        ORDER BY FOLLOWER DESC  LIMIT 1, 20
+	</select>
+
+	<select id="referFriendInsertChk" parameterType="map" resultType="int">
+		SELECT COUNT(ID)
+		FROM BLOCK_RECCOMAND_USER
+		WHERE USER_ID = #{sBox.id}
+		AND BLOCK_ID = #{block_id}
+	</select>
+
+	<select id="myPointHisList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, `ROLE`
+			, `POINT`
+			, GRADE
+			, ( SELECT CD_NM  FROM DTL_CD DC WHERE CD = GRADE ) AS GRADE_NM
+		FROM `USER`
+		WHERE ID = #{sBox.id};
+	</select>
+
+
+	<select id="eventApplyList" parameterType="map" resultType="box">
+		SELECT
+			  AH.ID
+			, AH.USER_ID
+			, AH.EVENT_REL_ID
+			, AH.EVENT_TYPE
+			, AH.EVENT_DESC
+			, (SELECT TDC.CD_NM FROM DTL_CD TDC WHERE TDC.CD = AH.EVENT_TYPE ) AS EVENT_TYPE_NM
+		FROM EVENT_APPLY_HISTORY AS AH
+		WHERE USER_ID = #{sBox.id}
+		AND AH.REG_DT BETWEEN DATE_SUB(NOW(), INTERVAL 3 MONTH) AND NOW()
+	</select>
+
+
+	<select id="profileImageDeleteChk" parameterType="map" resultType="int">
+		SELECT COUNT(ID) AS CNT
+		FROM USER
+		WHERE ID = #{sBox.id}
+		AND ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="userBlockSaveChk" parameterType="map" resultType="box">
+		SELECT
+			ID
+			, USER_ID
+			, BLOCK_USER_ID
+			, MY_BLOCK
+			, REG_ID
+			, REG_DT
+		FROM BLOCK_USER
+		WHERE USER_ID = #{sBox.id}
+		AND BLOCK_USER_ID = #{block_id}
+		AND MY_BLOCK = '1'
+	</select>
+
+	<select id="userStateChk" parameterType="map" resultType="int">
+		SELECT COUNT(ID) AS CNT
+		FROM USER
+		WHERE ID = #{block_id}
+		AND ACTIVE = '1'
+	</select>
+
+	<select id="userNameCheck" parameterType="map" resultType="int">
+		SELECT COUNT(ID) AS CNT
+		FROM USER
+		WHERE USERNAME = #{username}
+	</select>
+
+	<select id="postUseChk" parameterType="map" resultType="Box">
+		SELECT
+			  ID
+			, TYPE
+			, USER_ID
+			, TARGET_ID
+		FROM POST
+		WHERE ID = #{postId}
+		AND POST_ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="postCmmChk" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, POST_ID
+		FROM POST_COMMENT
+		WHERE ID = #{commentId}
+		AND COMMENT_ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="postReCmmChk" parameterType="map" resultType="box">
+		SELECT
+		 	  ID
+			, USER_ID
+			, POST_ID
+			, COMMENT_ID
+			, REPLY_COMMENT_ID
+		FROM POST_COMMENT_REPLY
+		WHERE COMMENT_ID = #{commentId}
+		<if test='type == "replyreply" and replyCommentId != null and replyCommentId != ""'>
+			AND ID = #{replyCommentId}
+		</if>
+		AND COMMENT_ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="postCmmView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, POST_ID
+			, COMMENT
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM POST_COMMENT
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ACTIVE NOT IN (0,2)
+		ORDER BY ID DESC
+		LIMIT 1
+	</select>
+
+	<select id="postCmmReView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, POST_ID
+			, COMMENT
+			, COMMENT_ID
+			, REPLY_COMMENT_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM POST_COMMENT_REPLY
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ACTIVE NOT IN (0,2)
+		ORDER BY ID DESC
+		LIMIT 1
+	</select>
+
+	<select id="postLikeChk" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, POST_ID
+		FROM POST_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND POST_ID = #{postId}
+	</select>
+
+
+	<select id="postCmmLikeChk" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, COMMENT_ID
+		FROM POST_COMMENT_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+	</select>
+
+	<select id="postReCmmLikeChk" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, COMMENT_ID
+		FROM POST_COMMENT_REPLY_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+	</select>
+
+	<select id="postLikeCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM POST_LIKE
+		WHERE POST_ID = #{postId}
+	</select>
+
+	<select id="postCmmLikeCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM POST_COMMENT_LIKE
+		WHERE COMMENT_ID = #{commentId}
+	</select>
+
+	<select id="postReCmmLikeCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM POST_COMMENT_REPLY_LIKE
+		WHERE COMMENT_ID = #{commentId}
+	</select>
+
+	<select id="myLikedVideosCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM (SELECT
+					V.ID,
+					V.USER_ID,
+					V.DESCRIPTION,
+					V.VIDEO,
+					V.THUM,
+					V.GIF,
+					V.VIDEO_ACTIVE,
+					V.VIEW,
+					V.SECTION,
+					V.SOUND_ID,
+					V.PRIVACY_TYPE,
+					V.ALLOW_COMMENTS,
+					V.ALLOW_DUET,
+					V.BLOCK,
+					V.DUET_VIDEO_ID,
+					V.OLD_VIDEO_ID,
+					V.DURATION,
+					V.PROMOTE,
+					V.REG_DT,
+					V.REG_ID,
+					V.MOD_ID,
+					V.MOD_DT
+			FROM VIDEO V
+			LEFT JOIN VIDEO_LIKE VL
+			ON V.ID = VL.VIDEO_ID
+			WHERE V.VIDEO_ACTIVE = '1'
+			AND V.PRIVACY_TYPE = 'public'
+			AND VL.USER_ID = #{sBox.id}
+		) ROOT
+		LEFT JOIN BLOCK_USER BU
+		ON ROOT.USER_ID = BU.BLOCK_USER_ID
+		AND BU.USER_ID = #{sBox.id}
+		WHERE BU.BLOCK_USER_ID IS NULL
+	</select>
+
+
+	<select id="getPostCommentList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, POST_ID
+		FROM POST_COMMENT
+		WHERE POST_ID = #{postId}
+	</select>
+
+	<select id="postCommentView" parameterType="map" resultType="box">
+		SELECT
+			  PC.ID
+			, PC.USER_ID
+			, PC.POST_ID
+			, DATE_FORMAT(PC.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, PC.COMMENT_ACTIVE
+			, (CASE WHEN PC.COMMENT_ACTIVE = 0 THEN "삭제된 댓글입니다."
+					WHEN PC.COMMENT_ACTIVE = 2 THEN "차단된 댓글입니다."
+					ELSE PC.COMMENT
+				END) AS COMMENT
+			, (	 CASE WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, PC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, PC.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, PC.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, PC.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, PC.REG_DT, NOW())>60 THEN CONCAT(TIMESTAMPDIFF(HOUR, PC.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW()))>30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, PC.REG_DT, NOW()), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW()))>365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+			 , (SELECT COUNT(*) AS CNT FROM POST_COMMENT_LIKE AS P WHERE P.COMMENT_ID = PC.ID) AS `LIKE`
+			 , DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m%:s') AS REG_DT
+		FROM POST_COMMENT AS PC
+		WHERE PC.ID = #{id}
+		<if test='order == "like"'>
+			ORDER BY `LIKE` DESC
+		</if>
+		<if test='order == "create"'>
+			ORDER BY REG_DT DESC
+		</if>
+	</select>
+
+	<select id="cmnReList" parameterType="map" resultType="box">
+ 		SELECT
+			  PC.ID
+			, PC.USER_ID
+			, PC.COMMENT_ID
+			, PC.POST_ID
+			, PC.REPLY_COMMENT_ID
+			, DATE_FORMAT(PC.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, PC.COMMENT_ACTIVE
+			, (CASE WHEN PC.COMMENT_ACTIVE = 0 THEN "삭제된 댓글입니다."
+					WHEN PC.COMMENT_ACTIVE = 2 THEN "차단된 댓글입니다."
+					ELSE PC.COMMENT
+				END) AS COMMENT
+			, (	 CASE WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, PC.REG_DT, NOW())  <![CDATA[<]]>  60 THEN CONCAT(TIMESTAMPDIFF(SECOND, PC.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, PC.REG_DT, NOW())  <![CDATA[<]]>  60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, PC.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, PC.REG_DT, NOW())>60 THEN CONCAT(TIMESTAMPDIFF(HOUR, PC.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d')  <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW()))  <![CDATA[<]]>  14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d')  <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW()))  <![CDATA[<]]>  30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d')  <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW()))>30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW())) <![CDATA[<]]>  365 THEN CONCAT(TIMESTAMPDIFF(MONTH, PC.REG_DT, NOW()), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(PC.REG_DT , '%Y-%m-%d')  <![CDATA[<]]>  DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, PC.REG_DT, NOW()))>365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(PC.REG_DT , '%Y-%m-%d'), NOW()), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+			 , (SELECT COUNT(*) AS CNT FROM POST_COMMENT_LIKE AS P WHERE P.COMMENT_ID = PC.ID) AS `LIKE`
+			 , DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m%:s') AS REG_DT
+		FROM POST_COMMENT_REPLY  AS PC
+		WHERE PC.ID = #{id}
+	</select>
+
+	<select id="postIdChk" parameterType="map" resultType="box">
+		SELECT
+			  ID
+		FROM POST
+		WHERE ID = (SELECT
+			POST_ID
+		FROM POST_COMMENT
+		WHERE ID = #{commentId})
+		AND POST_ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="cmnPostChk" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM POST_COMMENT
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<select id="cmnRePostChk" parameterType="map" resultType="int">
+		SELECT
+			COUNT(*) AS CNT
+		FROM POST_COMMENT_REPLY
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+		<if test='replyCommentId != null and replyCommentId != ""'>
+			AND REPLY_COMMENT_ID = #{replyCommentId}
+		</if>
+	</select>
+
+	<insert id="postLikeIst" parameterType="map">
+		INSERT INTO POST_LIKE (
+			  USER_ID
+			, POST_ID
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{postId}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="postCmmLikeIst" parameterType="map">
+		INSERT INTO POST_COMMENT_LIKE (
+			  USER_ID
+			, COMMENT_ID
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{commentId}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="postReCmmLikeIst" parameterType="map">
+		INSERT INTO POST_COMMENT_REPLY_LIKE (
+			  USER_ID
+			, COMMENT_ID
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{commentId}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="postCmmInsert" parameterType="map">
+		INSERT INTO POST_COMMENT (
+			  USER_ID
+			, POST_ID
+			, COMMENT
+			, CREATED
+			, COMMENT_ACTIVE
+			, REG_ID
+			, REG_DT
+		)VALUES (
+			  #{sBox.id}
+			, #{postId}
+			, #{comment}
+			, NOW()
+			, 1
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="postReCmmInsert" parameterType="map">
+		INSERT INTO POST_COMMENT_REPLY  (
+			  USER_ID
+			, POST_ID
+			, COMMENT_ID
+			<if test='type == "replyreply" and replyCommentId != null and replyCommentId != ""'>
+			, REPLY_COMMENT_ID
+			</if>
+			, COMMENT
+			, COMMENT_ACTIVE
+			, REG_ID
+			, REG_DT
+		)VALUES (
+			  #{sBox.id}
+			, #{postId}
+			, #{commentId}
+			<if test='type == "replyreply" and replyCommentId != null and replyCommentId != ""'>
+			, #{replyCommentId}
+			</if>
+			, #{comment}
+			, 1
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<!-- 팔로우(팔로워 추가)-->
+	<insert id="followInsert" parameterType="map">
+		INSERT INTO FOLLOWER (
+			  SENDER_ID
+			, RECEIVER_ID
+			, NOTIFICATION
+			, PROMOTION_ID
+			, REG_ID
+			, REG_DT
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{targetId}
+			, 1
+			, 0
+			, #{sBox.id}
+			, NOW()
+			, NOW()
+		)
+	</insert>
+
+	<insert id="referFriendInsert" parameterType="map">
+		INSERT INTO BLOCK_RECCOMAND_USER (
+			  USER_ID
+			, BLOCK_ID
+			, REG_DT
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{block_id}
+			, NOW()
+			, NOW()
+		)
+	</insert>
+
+	<insert id="userBlockInsert"  parameterType="map" >
+		INSERT INTO BLOCK_USER (
+			  USER_ID
+			, BLOCK_USER_ID
+			, MY_BLOCK
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{id}
+			, #{block_id}
+			, #{my_block}
+			, #{id}
+			, NOW()
+			, #{id}
+			, NOW()
+		)
+	</insert>
+
+	<update id="profileImageDelete" parameterType="map">
+		UPDATE USER
+			SET   PROFILE_PIC_SMALL = NULL
+				, PROFILE_PIC = NULL
+				, MOD_ID = #{sBox.id}
+	            , MOD_DT = NOW()
+		WHERE ID = #{sBox.id}
+	</update>
+
+	<update id="userImageUpdate" parameterType="map">
+		UPDATE USER
+			SET   PROFILE_PIC_SMALL = #{profile_pic_small}
+				, PROFILE_PIC = #{profile_pic}
+				, MOD_ID = #{sBox.id}
+	            , MOD_DT = now()
+		WHERE ID = #{sBox.id}
+	</update>
+
+	<update id="userNameUpdate" parameterType="map">
+		UPDATE USER
+			SET   USERNAME = #{username}
+				, MOD_ID = #{sBox.id}
+	            , MOD_DT = NOW()
+		WHERE ID = #{sBox.id}
+	</update>
+
+	<update id="videoDel" parameterType="map">
+		UPDATE VIDEO
+			SET VIDEO_ACTIVE = 0
+		WHERE ID = #{videoId}
+		AND USER_ID = #{sBox.id}
+		AND VIDEO_ACTIVE =  1
+	</update>
+
+	<delete id="userBlockFollowerDelete" parameterType="map" >
+		DELETE FROM FOLLOWER
+		WHERE SENDER_ID = #{id}
+		AND RECEIVER_ID = #{block_id}
+	</delete>
+
+	<delete id="userBlockDelete" parameterType="map" >
+		DELETE FROM BLOCK_USER
+		WHERE USER_ID = #{id}
+		AND BLOCK_USER_ID = #{block_id}
+	</delete>
+
+	<!-- 언팔로우 (팔로워 삭제)-->
+	<delete id="followDelete" parameterType="map">
+		DELETE FROM FOLLOWER
+		WHERE SENDER_ID = #{sBox.id}
+		AND RECEIVER_ID = #{targetId}
+	</delete>
+
+	<!-- 유저 차단내역 조회-->
+	<select id="myUserBlockList" parameterType="map" resultType="box">
+		SELECT
+			  BU.ID
+		    , BU.USER_ID
+		    , BU.BLOCK_USER_ID
+		    , BU.MY_BLOCK
+		    , BU.REG_ID
+		    , DATE_FORMAT(BU.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		    , BU.MOD_ID
+		    , BU.MOD_DT
+		FROM BLOCK_USER BU
+		WHERE BU.USER_ID = #{sBox.id}
+		AND BU.MY_BLOCK = '1'
+	</select>
+
+	<select id="tagetUserView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, ROLE
+		FROM `USER`
+		WHERE ID = #{blockUserId}
+	</select>
+<!--
+	<select id="myUserBlockList" parameterType="map" resultType="box">
+		SELECT
+			  BU.ID
+		    , BU.USER_ID
+		    , BU.BLOCK_USER_ID
+		    , BU.MY_BLOCK
+		    , BU.REG_ID
+		    , BU.REG_DT
+		    , BU.MOD_ID
+		    , BU.MOD_DT
+		    , U.ID AS TAGET_ID
+		    , U.USERNAME AS TAGET_USERNAME
+		    , U.PROFILE_PIC AS TAGET_PROFILE_PIC
+		    , U.PROFILE_PIC_SMALL AS TAGET_PROFILE_PIC_SMALL
+		    , U.ROLE AS TAGETROLE
+		FROM BLOCK_USER BU
+		LEFT JOIN USER U
+		ON BU.BLOCK_USER_ID = U.ID
+        AND U.ACTIVE = '1'
+		WHERE BU.USER_ID = #{sBox.id}
+		AND BU.MY_BLOCK = '1'
+	</select> -->
+
+	<!-- pwss 변경 관련 소스  -->
+	<select id="myPwdCheck" parameterType="map" resultType="box">
+		SELECT
+			ID
+			,PASSWORD
+		FROM USER
+		WHERE id = #{sBox.id}
+		AND PASSWORD = #{oldPwd}
+	</select>
+
+	<update id="myPwdUpdate" parameterType="map">
+		UPDATE USER
+			SET   PASSWORD = #{newPwd}
+				, MOD_ID = #{sBox.id}
+	            , MOD_DT = NOW()
+		WHERE ID = #{sBox.id}
+	</update>
+<!-- pwss 변경 관련 소스  -->
+	<update id="myUserSecessionUpdate" parameterType="map">
+		UPDATE USER
+			SET   ACTIVE = #{active}
+				, ACTIVE_REASON = #{active_reason}
+				, ACTIVE_REASON_DETAIL = #{active_reason_detail}
+				, MOD_ID = #{sBox.id}
+	            , MOD_DT = NOW()
+		WHERE ID = #{sBox.id}
+			AND PASSWORD = #{oldPwd}
+	</update>
+
+	<!-- post 관련 쿼리 -->
+	<insert id="postInsert" parameterType="map" keyProperty="">
+		INSERT INTO POST (
+			  TYPE
+			, USER_ID
+			, TARGET_ID
+			, TITLE
+			, CONTENTS
+			, POST_ACTIVE
+			, BLOCK
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  'my_post'
+			, #{sBox.id}
+			, #{targetId}
+			, #{title}
+			, #{contents}
+			, 1
+			, 0
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="postImgInsert" parameterType="map">
+		INSERT INTO POST_IMAGE (
+			  POST_ID
+			, IMAGE_URL
+			, IMAGE_SIZE
+			, WIDTH
+			, HEIGHT
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{postId}
+			, #{imageUrl}
+			, #{imageSize}
+			, #{width}
+			, #{height}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+
+	<select id="postInsertKey" parameterType="map" resultType="int">
+		SELECT ID
+		  FROM POST
+		 WHERE user_id = #{id}
+		 ORDER BY ID DESC
+		 LIMIT 0, 1
+	</select>
+
+	<update id="postUpdate" parameterType="map">
+		UPDATE POST
+			SET   TITLE = #{title}
+				, CONTENTS = #{contents}
+				, MOD_ID = #{sBox.id}
+	            , MOD_DT = NOW()
+		WHERE ID = #{id}
+		  AND USER_ID = #{sBox.id}
+	</update>
+
+	<update id="postDelete" parameterType="map" >
+		UPDATE POST
+			SET   POST_ACTIVE = 0
+				, POST_ACTIVE_DATE = NOW()
+		WHERE ID = #{id}
+		  AND USER_ID = #{sBox.id}
+	</update>
+
+	<select id="postList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		    SELECT ROW_NUMBER() OVER(ORDER BY A.ID ASC) AS RNUM
+				 , A.ID
+				 , A.`TYPE`
+				 , A.USER_ID
+				 , A.TARGET_ID
+			     , A.TITLE
+				 , (CASE WHEN C.ACTIVE = 1 AND A.POST_ACTIVE = '1' AND BLOCK = '0' THEN CONTENTS
+					WHEN C.ACTIVE = '2' THEN '정지된 회원입니다.'
+					WHEN A.POST_ACTIVE = '0' THEN '삭제된 댓글입니다.'
+					WHEN A.BLOCK = '1' THEN '차단된 댓글입니다.'
+				   END) AS CONTENTS
+				 , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%S') AS REG_DT
+			     , A.POST_ACTIVE
+			     , A.POST_ACTIVE_DATE
+			     , A.BLOCK
+			     , (SELECT (SELECT COUNT(*) FROM POST_COMMENT D WHERE A.ID = D.POST_ID ) + (SELECT COUNT(*) FROM POST_COMMENT_REPLY F WHERE A.ID = F.POST_ID ) FROM DUAL) AS COMMENT_CNT
+						, (	 CASE WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()), '초전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()), '분전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[>]]> 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.REG_DT, NOW()), '시전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()), '일 전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()), '주 전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[>]]> 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.REG_DT, NOW()), '달 전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[>]]> 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()), '년 전에 등록됨')
+							 END
+						 	)AS DIFF_DATE
+				 , (SELECT USERNAME FROM USER WHERE ID= #{sBox.id}) REG_ID
+			     , (SELECT COUNT(*) FROM POST_LIKE AS PL WHERE PL.POST_ID = A.ID ) AS LIKE_CNT
+			     , (SELECT SUM(TOTAL.CNT) FROM ((SELECT COUNT(*) AS CNT FROM POST_COMMENT WHERE POST_ID = #{POSTID}) UNION (SELECT COUNT(*) AS CNT FROM POST_COMMENT_REPLY WHERE POST_ID = #{postId})) AS TOTAL) AS COMMENT_CNT
+			     , (SELECT NVL2(MAX(ID), 'Y', 'N') FROM POST_COMMENT_LIKE E WHERE E.USER_ID = #{sBox.id} AND E.COMMENT_ID = A.ID) AS LIKE_YN
+			  FROM POST A
+			  LEFT JOIN POST_LIKE B ON A.ID = B.POST_ID
+			  LEFT JOIN USER C ON A.USER_ID = C.ID
+			 WHERE 1=1
+			   AND A.USER_ID = #{target_id}
+			   AND A.`TYPE` = 'my_post'
+			 <choose>
+				<when test="order == 'LIKE'"> ORDER BY LIKE_CNT DESC </when>
+				<otherwise> ORDER BY A.REG_DT DESC </otherwise>
+			</choose>
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<select id="postListCnt" parameterType="map" resultType="int">
+		    SELECT COUNT(*)
+			  FROM POST A
+			  LEFT JOIN POST_LIKE B ON A.ID = B.POST_ID
+			  LEFT JOIN USER C ON A.USER_ID = C.ID
+			 WHERE 1=1
+			   AND A.USER_ID = #{target_id}
+			   AND A.`TYPE` = 'my_post'
+	</select>
+
+	<select id="postUserView" parameterType="map" resultType="box">
+		SELECT USERNAME
+		     , PROFILE_PIC
+		     , PROFILE_PIC_SMALL
+		     , ROLE
+		  FROM USER
+		 WHERE ID = #{userId}
+	</select>
+
+	<select id="postImageList" parameterType="map" resultType="box">
+		SELECT ID
+		     , POST_ID
+		     , IMAGE_URL
+		     , IMAGE_SIZE
+		     , WIDTH
+		     , HEIGHT
+		     , DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%S') AS REG_DT
+		 FROM POST_IMAGE
+		WHERE POST_ID = #{postId}
+	</select>
+
+	<delete id="postImageDelete" parameterType="map" >
+		DELETE FROM POST_IMAGE
+		WHERE ID = #{id}
+	</delete>
+
+	<update id="postCommentDelete" parameterType="map" >
+		UPDATE POST_COMMENT
+			SET   POST_ACTIVE = 0
+				, POST_ACTIVE_DATE = NOW()
+				, MOD_ID = #{sBox.id}
+				, MOD_DT = NOW()
+		WHERE POST_ID = #{postId}
+	</update>
+
+	<update id="postCommentReplyDelete" parameterType="map" >
+		UPDATE POST_COMMENT_REPLY
+			SET   POST_ACTIVE = 0
+				, POST_ACTIVE_DATE = NOW()
+				, MOD_ID = #{sBox.id}
+				, MOD_DT = NOW()
+		WHERE POST_ID = #{postId}
+	</update>
+
+	<select id="postCmtList" parameterType="map" resultType="box">
+		SELECT  A.ID
+		      , A.USER_ID
+		      , A.POST_ID
+			  , (CASE WHEN C.ACTIVE = 1 AND A.comment_active = '1' THEN COMMENT
+					WHEN C.ACTIVE = '2' THEN '정지된 회원입니다.'
+					WHEN A.comment_active  = '0' THEN '삭제된 댓글입니다.'
+			    END) AS COMMENT
+		      , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%S') AS REG_DT
+		      , A.COMMENT_ACTIVE
+		      , (	 CASE WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.reg_dt, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.reg_dt, NOW()), '초전에 등록됨')
+			  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.reg_dt, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.reg_dt, NOW()), '분전에 등록됨')
+			  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.reg_dt, NOW())<![CDATA[>]]>60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.reg_dt, NOW()), '시전에 등록됨')
+			  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()), '일 전에 등록됨')
+			  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()), '주 전에 등록됨')
+			  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW()))<![CDATA[>]]>30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.reg_dt, NOW()), '달 전에 등록됨')
+			  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW()))<![CDATA[>]]>365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()), '년 전에 등록됨')
+		 END
+	 	)AS DIFF_DATE
+	  , (SELECT NVL2(MAX(ID), 'Y', 'N') FROM POST_COMMENT_LIKE E WHERE E.USER_ID = #{sBox.id} AND E.COMMENT_ID = A.ID) AS isLike
+	  , (SELECT COUNT(id) FROM POST_COMMENT_LIKE E WHERE E.COMMENT_ID = A.ID) AS like_count
+		 FROM POST_COMMENT A
+		 LEFT JOIN USER C ON A.USER_ID = C.ID
+		 where A.POST_ID = #{postId}
+	</select>
+
+	<select id="postCmtReplyList" parameterType="map" resultType="box">
+		SELECT  A.ID
+		      , A.USER_ID
+		      , A.POST_ID
+				 , (CASE WHEN C.ACTIVE = 1 AND A.comment_active = '1' THEN A.COMMENT
+					WHEN C.ACTIVE = '2' THEN '정지된 회원입니다.'
+					WHEN A.comment_active  = '0' THEN '삭제된 댓글입니다.'
+					else A.COMMENT
+				   END) AS COMMENT
+		      , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%S') AS REG_DT
+		      , A.COMMENT_ACTIVE
+		      , ( CASE WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.reg_dt, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.reg_dt, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.reg_dt, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.reg_dt, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.reg_dt, NOW())<![CDATA[>]]>60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.reg_dt, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW()))<![CDATA[>]]>30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.reg_dt, NOW()), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(A.reg_dt , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.reg_dt, NOW()))<![CDATA[>]]>365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(A.reg_dt , '%Y-%m-%d'), NOW()), '년 전에 등록됨')
+				  END
+			 	) AS DIFF_DATE
+			  , (SELECT NVL2(MAX(ID), 'Y', 'N') FROM POST_COMMENT_LIKE E WHERE E.USER_ID = #{postId} AND E.COMMENT_ID = A.ID) AS isLike
+			  , (SELECT COUNT(id) FROM POST_COMMENT_LIKE E WHERE E.COMMENT_ID = A.ID) AS like_count
+			  , A.reply_comment_id
+		 FROM POST_COMMENT_REPLY A
+		 LEFT JOIN USER C ON A.USER_ID = C.ID
+		 where comment_id = #{commentId}
+	</select>
+
+	<select id="postCmtReplyReply" parameterType="map" resultType="box">
+		select B.id
+		     , B.role
+		     , B.username
+		  from post_comment_reply A
+		  left join user B on A.user_id = B.id
+		 where A.id = #{replyCommentId}
+	</select>
+
+	<select id="postView" parameterType="map" resultType="box">
+		    SELECT A.ID
+				 , A.`TYPE`
+				 , A.USER_ID
+				 , A.TARGET_ID
+			     , A.TITLE
+				 , (CASE WHEN C.ACTIVE = 1 AND A.POST_ACTIVE = '1' AND BLOCK = '0' THEN CONTENTS
+					WHEN C.ACTIVE = '2' THEN '정지된 회원입니다.'
+					WHEN A.POST_ACTIVE = '0' THEN '삭제된 댓글입니다.'
+					WHEN A.BLOCK = '1' THEN '차단된 댓글입니다.'
+				   END) AS CONTENTS
+				 , DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%S') AS REG_DT
+			     , A.POST_ACTIVE
+			     , A.POST_ACTIVE_DATE
+			     , A.BLOCK
+			     , (SELECT (SELECT COUNT(*) FROM POST_COMMENT D WHERE A.ID = D.POST_ID ) + (SELECT COUNT(*) FROM POST_COMMENT_REPLY F WHERE A.ID = F.POST_ID ) FROM DUAL) AS COMMENT_CNT
+				 , (	 CASE WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()), '초전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()), '분전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[>]]> 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.REG_DT, NOW()), '시전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()), '일 전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()), '주 전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[>]]> 30 AND CONCAT(TIMESTAMPDIFF(DAY, DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.REG_DT, NOW()), '달 전에 등록됨')
+								  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[>]]> 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, DATE_FORMAT(A.REG_DT , '%Y-%m-%d'), NOW()), '년 전에 등록됨')
+							 END
+						 	)AS DIFF_DATE
+				 , (SELECT USERNAME FROM USER WHERE ID= #{sBox.id}) REG_ID
+			     , (SELECT COUNT(*) FROM POST_LIKE AS PL WHERE PL.POST_ID = A.ID ) AS LIKE_CNT
+			     , (SELECT NVL2(MAX(ID), 'Y', 'N') FROM POST_COMMENT_LIKE E WHERE E.USER_ID = #{sBox.id} AND E.COMMENT_ID = A.ID) AS LIKE_YN
+			  FROM POST A
+			  LEFT JOIN POST_LIKE B ON A.ID = B.POST_ID
+			  LEFT JOIN USER C ON A.USER_ID = C.ID
+			 WHERE 1=1
+			   AND A.`TYPE` = 'my_post'
+			   AND A.ID = #{postId}
+	</select>
+
+	<select id="postReplyUserView" parameterType="map" resultType="box">
+		SELECT USERNAME
+		     , PROFILE_PIC
+		     , PROFILE_PIC_SMALL
+		     , ROLE
+		  FROM USER
+		 WHERE ID = #{user_id}
+	</select>
+
+	<insert id="pushNotificationInsrt"  parameterType="map">
+		INSERT INTO PUSH_NOTIFICATION (
+			  ID
+			, LIKES
+			, COMMENTS
+			, NEW_FOLLOWERS
+			, MENTIONS
+			, DIRECT_MESSAGES
+			, VIDEO_UPDATES
+			, POST_UPDATE
+			, EVENT
+			, REG_ID
+			, REG_DT
+		)VALUES(
+			  #{sBox.id}
+			, #{likes}
+			, #{comments}
+			, #{newFollowers}
+			, #{mentions}
+			, #{directMessages}
+			, #{videoUpdates}
+			, #{postUpdate}
+			, #{event}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+
+
+	<select id="notificationChk" parameterType="map" resultType="box">
+		SELECT
+			  LIKES
+			, EVENT
+		FROM PUSH_NOTIFICATION
+		WHERE ID = #{sBox.id}
+	</select>
+
+	<update id="updateNotification" parameterType="map">
+		UPDATE PUSH_NOTIFICATION
+			SET 	<if test='notice != null'>
+						  LIKES = #{likes}
+						, COMMENTS = #{comments}
+						, NEW_FOLLOWERS = #{newFollowers}
+						, MENTIONS = #{mentions}
+						, DIRECT_MESSAGES = #{directMessages}
+						, VIDEO_UPDATES = #{videoUpdates}
+						, POST_UPDATE = #{postUpdate}
+					</if>
+					<if test='event != null'>
+					  EVENT = #{event}
+					</if>
+					, MOD_ID = #{sBox.id}
+					, MOD_DT = NOW()
+		WHERE ID = #{sBox.id}
+	</update>
+
+	<delete id="postLikeDel" parameterType="map">
+		DELETE FROM POST_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND POST_ID = #{postId}
+	</delete>
+
+	<delete id="postCmmLikeDel" parameterType="map">
+		DELETE FROM POST_COMMENT_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+	</delete>
+
+	<delete id="postReCmmLikeDel" parameterType="map">
+		DELETE FROM POST_COMMENT_REPLY_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+	</delete>
+
+
+		<!-- 사용자 포인트 조회-->
+	<select id="getUserPoint" parameterType="map" resultType="int">
+		SELECT POINT
+		FROM USER
+		WHERE ID = #{sBox.id}
+	</select>
+	<!-- 인터파크 코드 -->
+	<select id="getInterparkCode" parameterType="map" resultType="box">
+		SELECT  *
+		FROM INTERPARK_CODE_LIST
+		WHERE USED_YN = 'N'
+		ORDER BY ID ASC
+		LIMIT 1
+	</select>
+
+	<update id="usrPointUpdate" parameterType="map">
+		UPDATE USER AS A
+		SET POINT = A.POINT - 5000
+			, MOD_ID = #{sBox.id}
+			, MOD_DT = NOW()
+		WHERE ID = #{sBox.id}
+	</update>
+	<!-- 인터파크 코드리스트 업데이트 -->
+	<update id="interparkCodeListUpdate" parameterType="map">
+		UPDATE INTERPARK_CODE_LIST
+		SET USER_ID = #{sBox.id},
+			USED_YN = 'Y',
+			USED_DATE = NOW(),
+			EXPIRE_DATE = DATE_ADD(NOW(), INTERVAL 6 MONTH)
+			WHERE id = #{id}
+	</update>
+	<!-- pointHistoryInsert -->
+	<insert id="pointHistoryInsert" parameterType="map">
+		INSERT INTO AI_POINT (
+			  USER_ID
+			, USE_POINT
+			, POINT_TYPE
+			, DESCRIPTION
+		) VALUES (
+			 #{sBox.id}
+			, '5000'
+			, 'PU'
+			, '인터파크 할인코드 구매'
+		)
+	</insert>
+
+	<update id="postCmnDel" parameterType="map">
+		UPDATE POST_COMMENT
+			SET COMMENT_ACTIVE = 0
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+	</update>
+
+	<update id="postReCmnDel" parameterType="map">
+		UPDATE POST_COMMENT_REPLY
+			SET COMMENT_ACTIVE = 0
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+		<if test='replyCommentId != null and replyCommentId != ""'>
+			AND REPLY_COMMENT_ID = #{replyCommentId}
+		</if>
+	</update>
+
+</mapper>

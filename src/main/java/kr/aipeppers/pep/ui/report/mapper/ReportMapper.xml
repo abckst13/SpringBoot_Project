@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="report">
+
+	<select id="postCommentChk" parameterType="map" resultType="int">
+		SELECT
+			COUNT(ID)
+		FROM
+			POST
+
+			WHERE ID = #{parent_id}
+	</select>
+
+	<select id="videoCommentChk" parameterType="map" resultType="int">
+		SELECT
+			COUNT(ID)
+		FROM
+			VIDEO
+
+			WHERE ID = #{parent_id}
+	</select>
+
+	<select id="postCommentSelect" parameterType="map" resultType="box">
+		SELECT
+			pc.id
+		    ,pc.user_id
+		    ,pc.post_id
+		    ,pc.comment
+		    ,u.active
+		FROM post_comment pc
+
+		LEFT JOIN USER u
+			ON pc.user_id = u.id
+
+		    WHERE pc.ID = #{comment_id}
+	</select>
+
+	<select id="postCommentReplySelect" parameterType="map" resultType="box">
+		SELECT
+			pc.id
+		    ,pc.user_id
+		    ,pc.post_id
+		    ,pc.comment
+		    ,u.active
+		FROM post_comment_reply pc
+
+		LEFT JOIN USER u
+			ON pc.user_id = u.id
+
+		    WHERE pc.ID = #{comment_id}
+	</select>
+
+	<select id="videoCommentSelect" parameterType="map" resultType="box">
+		SELECT
+			vc.id
+		    ,vc.user_id
+		    ,vc.video_id
+		    ,vc.comment
+		    ,u.active
+		FROM video_comment vc
+
+		LEFT JOIN USER u
+			ON vc.user_id = u.id
+
+		    WHERE vc.ID = #{comment_id}
+	</select>
+
+	<select id="videoCommentReplySelect" parameterType="map" resultType="box">
+		SELECT
+			vc.id
+		    ,vc.user_id
+		    ,vc.video_id
+		    ,vc.comment
+		    ,u.active
+		FROM video_comment_reply vc
+
+		LEFT JOIN USER u
+			ON vc.user_id = u.id
+
+		    WHERE vc.ID = #{comment_id}
+	</select>
+
+	<select id="postSelect" parameterType="map" resultType="box">
+		SELECT
+			p.id
+		    ,p.user_id
+		    ,u.active
+		FROM post p
+
+		LEFT JOIN USER u
+			ON p.user_id = u.id
+
+		    WHERE p.ID = #{post_id}
+	</select>
+
+	<select id="videoSelect" parameterType="map" resultType="box">
+		SELECT
+			v.id
+		    ,v.user_id
+		    ,u.active
+		FROM video v
+
+		LEFT JOIN USER u
+			ON v.user_id = u.id
+
+		    WHERE v.ID = #{video_id}
+	</select>
+
+	<select id="userBlockChk" parameterType="map" resultType="int">
+		SELECT
+			COUNT(ID)
+		FROM BLOCK_USER
+
+	    WHERE USER_ID = #{sBox.id}
+	    	AND BLOCK_USER_ID = #{block_id}
+	</select>
+
+	<select id="reportUserCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(ID)
+		FROM report_user
+
+	    WHERE USER_ID = #{sBox.id}
+	    	AND REPORT_USER_ID = #{report_user_id}
+	</select>
+
+		<select id="reportPostCnt" parameterType="map" resultType="int">
+		SELECT
+			COUNT(ID)
+		FROM report_post
+
+	    WHERE USER_ID = #{sBox.id}
+	    	AND POST_ID = #{post_id}
+	    	AND REPORT_CONTENT = #{report_reason_title}
+	</select>
+
+	<insert id="reportCommentInsert"  parameterType="map" >
+		INSERT INTO report_comment (
+			  USER_ID
+			, TYPE
+			, PARENT_ID
+			, COMMENT_ID
+			, REPORT_REASON_TITLE
+			, DESCRIPTION
+			, CREATED
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{type}
+			, #{parent_id}
+			, #{comment_id}
+			, #{report_reason_title}
+			, #{description}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="reportVideoInsert"  parameterType="map" >
+		INSERT INTO report_video (
+			  USER_ID
+			, OWNER_ID
+			, VIDEO_ID
+			, REPORT_REASON_TITLE
+			, DESCRIPTION
+			, CREATED
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{owner_id}
+			, #{video_id}
+			, #{report_reason_title}
+			, #{description}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="reportUserInsert"  parameterType="map" >
+		INSERT INTO report_user (
+			  USER_ID
+			, REPORT_USER_ID
+			, REPORT_REASON_TITLE
+			, DESCRIPTION
+			, CREATED
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{report_user_id}
+			, null
+			, #{description}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="reportPostInsert"  parameterType="map" >
+		INSERT INTO report_post (
+			  USER_ID
+			, POST_ID
+			, REPORT_CONTENT
+			, DESCRIPTION
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{post_id}
+			, #{report_reason_title}
+			, #{description}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+</mapper>

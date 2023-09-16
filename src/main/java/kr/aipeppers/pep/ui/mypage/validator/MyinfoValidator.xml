@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE form-validation PUBLIC
+	"-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.1//EN"
+	"http://jakarta.apache.org/commons/dtds/validator_1_1.dtd">
+
+<form-validation>
+	<formset>
+		<form name="mypage.myinfo.referFriendInsert">
+			<field property="block_id" depends="required">
+				<arg0 key="차단 삭제 유저 id" resource="false" />
+			</field>
+		</form>
+
+		<form name="mypage.myinfo.changeUsername">
+			<field property="username" depends="required,minlength,maxlength,mask">
+				<arg0 key="사용자 닉네임" resource="false" />
+				<var>
+					<var-name>minlength</var-name>
+					<var-value>2</var-value>
+				</var>
+				<var>
+					<var-name>maxlength</var-name>
+					<var-value>8</var-value>
+				</var>
+				<var>
+					<var-name>mask</var-name>
+					<var-value>^[A-Z0-9ㄱ-ㅎ가-힣]+$</var-value>
+				</var>
+			</field>
+		</form>
+
+		<form name="mypage.myinfo.changePassword">
+			<field property="old_password" depends="required">
+				<arg0 key="이전 비밀번호" resource="false" />
+			</field>
+
+			<field property="new_password" depends="required">
+				<arg0 key="새로운 비밀번호" resource="false" />
+			</field>
+		</form>
+
+		<form name="mypage.myinfo.myShowPerpeperInsert">
+			<field property="file" depends="required">
+				<arg0 key="파일" resource="false" />
+			</field>
+		</form>
+
+		<form name="mypage.myinfo.postCmmValidation">
+			<field property="post_id" depends="required">
+				<arg0 key="포스트 아이디" resource="false" />
+			</field>
+		</form>
+
+		<form name="mypage.myinfo.addUserImage">
+			<field property="profile_pic" depends="required">
+				<arg0 key="ios 프로필" resource="false" />
+			</field>
+			<field property="profile_pic_small" depends="required">
+				<arg0 key="안드로이드 프로필" resource="false" />
+			</field>
+		</form>
+	</formset>
+</form-validation>

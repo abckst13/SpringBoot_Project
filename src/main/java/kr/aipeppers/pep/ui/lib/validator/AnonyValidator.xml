@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE form-validation PUBLIC
+	"-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.1//EN"
+	"http://jakarta.apache.org/commons/dtds/validator_1_1.dtd">
+
+<form-validation>
+	<formset>
+		<form name="anony.joinChk">
+			<field property="username" depends="required">
+				<arg0 key="사용자이름" resource="false" />
+			</field>
+			<field property="email" depends="required">
+				<arg0 key="이메일" resource="false" />
+			</field>
+			<field property="password" depends="required">
+				<arg0 key="패스워드" resource="false" />
+			</field>
+			<field property="phone" depends="required">
+				<arg0 key="휴대폰 번호" resource="false" />
+			</field>
+		</form>
+		<form name="anony.password">
+			<field property="email" depends="required,mask">
+				<arg0 key="이메일" resource="false" />
+			</field>
+			<field property="password" depends="required,mask">
+				<arg0 key="패스워드" resource="false" />
+				<var>
+					<var-name>emailPattern</var-name>
+					<var-value>[`~!@#$%^<![CDATA[&]]>*|\\\\'\";:/?^=^+_()<![CDATA[<]]>>]</var-value>
+				</var>
+			</field>
+		</form>
+	</formset>
+
+</form-validation>

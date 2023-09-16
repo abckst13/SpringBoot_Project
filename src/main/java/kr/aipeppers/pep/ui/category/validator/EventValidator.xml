@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE form-validation PUBLIC
+	"-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.1//EN"
+	"http://jakarta.apache.org/commons/dtds/validator_1_1.dtd">
+
+<form-validation>
+	<formset>
+		<form name="event.attendChkInsert">
+			<field property="date" depends="required,date">
+				<arg0 key="클릭 날짜" resource="false" />
+				<var>
+					<var-name>datePattern</var-name>
+<!-- 					<var-value>^[A-Z0-9]+$</var-value> -->
+					<var-value>yyyy-MM-dd</var-value>
+				</var>
+			</field>
+		</form>
+		<form name="event.luckydrawChk">
+			<field property="id" depends="required">
+				<arg0 key="이벤트 아이디" resource="false" />
+			</field>
+		</form>
+		<form name="event.attendChkInsert">
+			<field property="attendId" depends="required">
+				<arg0 key="출석체크 아이디" resource="false" />
+			</field>
+			<field property="name" depends="required">
+				<arg0 key="수령인 이름" resource="false" />
+			</field>
+			<field property="phone" depends="required">
+				<arg0 key="수령인 폰범호" resource="false" />
+			</field>
+			<field property="isAgree" depends="required">
+				<arg0 key="개인정보 수집 동의" resource="false" />
+			</field>
+		</form>
+		<form name="event.mvpEventInfoInsert">
+			<field property="matchId" depends="required">
+				<arg0 key="경기 아이디" resource="false" />
+			</field>
+			<field property="name" depends="required">
+				<arg0 key="수령인 이름" resource="false" />
+			</field>
+			<field property="phone" depends="required">
+				<arg0 key="수령인 폰범호" resource="false" />
+			</field>
+			<field property="agree" depends="required">
+				<arg0 key="개인정보 수집 동의" resource="false" />
+			</field>
+		</form>
+		<form name="event.postMatchVictoryInsert">
+			<field property="matchId" depends="required">
+				<arg0 key="경기 아이디" resource="false" />
+			</field>
+			<field property="homeScore" depends="required">
+				<arg0 key="홈팀 총 스코어" resource="false" />
+			</field>
+			<field property="awayScore" depends="required">
+				<arg0 key="원정팀 총 스코어" resource="false" />
+			</field>
+			<field property="our" depends="required">
+				<arg0 key="홈팀 예측 스코어" resource="false" />
+			</field>
+			<field property="opp" depends="required">
+				<arg0 key="원정팀 예측 스코어" resource="false" />
+			</field>
+		</form>
+		<form name="matchVictoryInsertInfo">
+			<field property="victoryId" depends="required">
+				<arg0 key="빅토리 아이디" resource="false" />
+			</field>
+			<field property="matchId" depends="required">
+				<arg0 key="경기 아이디" resource="false" />
+			</field>
+			<field property="name" depends="required">
+				<arg0 key="수령인 이름" resource="false" />
+			</field>
+			<field property="phone" depends="required">
+				<arg0 key="수령인 폰범호" resource="false" />
+			</field>
+			<field property="agree" depends="required">
+				<arg0 key="개인정보 수집 동의" resource="false" />
+			</field>
+		</form>
+		<form name="checkMatchVictoryApply">
+			<field property="victoryId" depends="required">
+				<arg0 key="빅토리 아이디" resource="false" />
+			</field>
+			<field property="matchId" depends="required">
+				<arg0 key="경기 아이디" resource="false" />
+			</field>
+		</form>
+	</formset>
+
+</form-validation>

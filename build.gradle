@@ -1,0 +1,125 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath('org.springframework.boot:spring-boot-gradle-plugin:2.7.8')
+		classpath('io.spring.gradle:dependency-management-plugin:1.0.15.RELEASE')
+	}
+}
+
+plugins {
+	id 'org.springframework.boot' version '2.7.8'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	//id 'com.google.cloud.tools.jib' version '3.1.1'
+	id 'java-library'
+	id 'eclipse-wtp'
+	id 'java'
+	//id 'war'
+}
+
+eclipse {
+	project {
+		buildCommands.clear();
+		buildCommand 'org.eclipse.jdt.core.javabuilder'
+		buildCommand 'org.eclipse.buildship.core.gradleprojectbuilder'
+	}
+	wtp {
+		facet {
+			file {
+				facet name: 'jst.java', version: '17'
+			}
+		}
+	}
+}
+
+group = 'kr.aipeppers.pep.ui'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+compileJava {
+	options.encoding = 'UTF-8'
+}
+
+configurations {
+	developmentOnly
+		runtimeClasspath {
+			extendsFrom developmentOnly
+		}
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+  	// firebase sdk
+  	implementation 'com.google.firebase:firebase-admin:6.8.1'
+  	// okhttp
+  	implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.2.2'
+
+	// pep-core-lib Spring Boot Project Module Dependencies
+	implementation (project(':pep-core-lib'))
+
+	// Spring Boot DevTools
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+	// Tomcat standalone
+	//providedRuntime 'org.springframework.boot:spring-boot-starter-tomcat'
+
+	// Lombok Dependencies - main
+	compileOnly 'org.projectlombok:lombok:1.18.24'
+	annotationProcessor 'org.projectlombok:lombok:1.18.24'
+
+	// Test Dependencies
+	testImplementation('org.springframework.boot:spring-boot-starter-test') {
+		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
+	}
+	// Lombok Dependencies - test
+	testCompileOnly 'org.projectlombok:lombok'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+	//antlr
+	implementation 'antlr:antlr:2.7.7'
+}
+
+sourceSets {
+	main {
+		resources {
+			srcDirs 'src/main/java'
+		}
+	}
+}
+
+bootJar {
+	destinationDirectory = file("${buildDir}/libs/")
+	archivesBaseName = 'pep'
+	archiveFileName = 'pep-ui.jar'
+	archiveVersion = "0.1"
+//	manifest {
+//		attributes['Main-Class'] = 'kr.aipeppers.pep.uiApplication'
+//	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+//jib {
+//	to {
+//		image = 'docker-trade'
+//		tags = ['latest']
+		//username = ''
+		//password = ''
+//	}
+//}
+
+//war {
+//	archiveFileName = 'ROOT.war'
+//}
+//bootWar.enabled = false
+//war.enabled = true
+

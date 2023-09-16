@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE form-validation PUBLIC
+	"-//Apache Software Foundation//DTD Commons Validator Rules Configuration 1.1//EN"
+	"http://jakarta.apache.org/commons/dtds/validator_1_1.dtd">
+
+<form-validation>
+	<formset>
+		<form name="msg.msgInsert">
+			<field property="msgC" depends="required,mask,minlength">
+				<arg0 key="메시지 코드" resource="false" />
+				<var>
+					<var-name>mask</var-name>
+					<var-value>^[A-Z0-9]+$</var-value>
+				</var>
+				<var>
+					<var-name>minlength</var-name>
+					<var-value>9</var-value>
+				</var>
+			</field>
+			<field property="msgKrnCn" depends="required">
+				<arg0 key="메시지한글내용" resource="false" />
+			</field>
+
+<!-- 			<field property="userType" depends="required,incode"> -->
+<!-- 				<arg0 key="메세지분류" resource="false" /> -->
+<!-- 				<var> -->
+<!-- 					<var-name>grpCd</var-name> -->
+<!-- 					<var-value>USER_TYPE</var-value> -->
+<!-- 				</var> -->
+<!-- 			</field> -->
+			<field property="msgKndC" depends="required,mask">
+				<arg0 key="메시지종류코드" resource="false" />
+				<var>
+					<var-name>mask</var-name>
+					<var-value>W|I|E|N</var-value>
+				</var>
+			</field>
+			<field property="msgTpc" depends="required,mask">
+				<arg0 key="메시지유형코드" resource="false" />
+				<var>
+					<var-name>mask</var-name>
+					<var-value>S|D|C|B</var-value>
+				</var>
+			</field>
+		</form>
+	</formset>
+</form-validation>

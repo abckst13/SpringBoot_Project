@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="msg">
+
+	<!-- 메시지 검색조건 -->
+	<sql id="msgSrch">
+		<where>
+			A.DEL_YN = 'N'
+			<if test='srchMsgType != null and srchMsgType != ""'>
+				AND A.MSG_TYPE = #{srchMsgType}
+			</if>
+
+			<if test='srchStrDt != null and srchStrDt != ""'>
+				AND A.CRET_DT &gt;= STR_TO_DATE(#{srchStrDt}, '%Y%m%d')
+			</if>
+			<if test='srchEndDt != null and srchEndDt != ""'>
+				AND A.CRET_DT &lt; DATE_ADD(STR_TO_DATE(#{srchEndDt}, '%Y%m%d'), INTERVAL 1 DAY)
+			</if>
+
+			<if test='srchStrMonDt != null and srchStrMonDt != ""'>
+				AND A.CRET_DT &gt;= STR_TO_DATE(#{srchStrMonDt}, '%Y%m%d')
+			</if>
+			<if test='srchEndMonDt != null and srchEndMonDt != ""'>
+				AND A.CRET_DT &lt; DATE_ADD(STR_TO_DATE(#{srchEndMonDt}, '%Y%m'), INTERVAL 1 MONTH)
+			</if>
+
+			<if test='srchWord != null and srchWord != ""'>
+				<if test='srchMethod == "msgId"'>
+					AND A.MSG_ID LIKE CONCAT('%', #{srchWord}, '%')
+				</if>
+				<if test='srchMethod == "msgNm"'>
+					AND A.MSG_NM LIKE CONCAT('%', #{srchWord}, '%')
+				</if>
+			</if>
+
+			<if test='msgId != null and msgId != ""'>
+				AND A.MSG_ID = #{msgId}
+			</if>
+
+		</where>
+	</sql>
+
+	<!-- 메시지 총갯수-->
+	<select id="msgCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM MSG A
+		<include refid="msgSrch" />
+	</select>
+
+	<!-- 메시지 조회-->
+	<select id="msgList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			<choose>
+				<when test='sortColumn != null and sortColumn != ""'>
+					ROW_NUMBER() OVER(ORDER BY ${sortColumn} ${sortOrder}) AS RNUM
+				</when>
+				<otherwise>
+					ROW_NUMBER() OVER(ORDER BY A.MSG_ID ASC) AS RNUM
+				</otherwise>
+			</choose>
+			, A.MSG_ID
+			, A.MSG_NM
+			, A.MSG_DESC
+			, A.DEL_YN
+			, A.MSG_TYPE
+			, DATE_FORMAT(A.CRET_DT, '%Y-%m-%d %T.%f') AS CRET_DT
+		FROM MSG A
+		<include refid="msgSrch" />
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<!-- 메시지 PK조회-->
+	<select id="msgView" parameterType="map" resultType="box">
+		SELECT
+			  A.MSG_ID
+			, A.MSG_NM
+			, A.MSG_DESC
+			, A.DEL_YN
+			, A.MSG_TYPE
+			, (SELECT CD_NM FROM CD_MST WHERE CD_ID = A.MSG_TYPE AND UP_CD_ID = 'MSG_TYPE') AS MSG_TYPE_NM
+			, DATE_FORMAT(A.REG_DT, '%Y-%m-%d %T.%f') AS CRET_DT
+		FROM MSG A
+		WHERE A.DEL_YN = 'N'
+		AND A.MSG_ID = #{msgId}
+	</select>
+
+	<!-- 메시지 등록-->
+	<insert id="msgInsert" parameterType="map">
+		INSERT INTO MSG (
+			  MSG_ID
+			, CRETR
+			, CHGR
+			, MSG_NM
+			, MSG_DESC
+			, MSG_TYPE
+		) VALUES (
+			  #{msgId}
+			, #{sBox.userId}
+			, #{sBox.userId}
+			, #{msgNm}
+			, #{msgDesc}
+			, #{msgType}
+		)
+	</insert>
+
+	<!-- 메시지 수정-->
+	<update id="msgUpdate" parameterType="map">
+		UPDATE MSG SET
+			  CHG_DT = NOW(3)
+			, CHGR = #{sBox.userId}
+			, MSG_NM = #{msgNm}
+			, MSG_DESC = #{msgDesc}
+			, MSG_TYPE = #{msgType}
+		WHERE MSG_ID = #{msgId}
+	</update>
+
+	<!-- 메시지 삭제-->
+	<delete id="msgDelete" parameterType="map">
+		DELETE FROM MSG
+		WHERE MSG_Id = #{msgId}
+	</delete>
+
+	<!-- 업무예제 -->
+	<select id="bizExamList" parameterType="map" resultType="box">
+		SELECT
+		 	  '111' AS "KEY"
+		 	, 'value11' AS VALUE
+		UNION
+		SELECT
+			  '222' AS "KEY"
+			, 'value22' AS VALUE
+	</select>
+
+</mapper>

@@ -1,0 +1,901 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="showpepper.info">
+
+	<sql id="videoInfo">
+		<if test='chkUser != "N"'>
+			AND VI.USER_ID NOT IN (  SELECT BU.BLOCK_USER_ID
+									 FROM BLOCK_USER BU
+									 WHERE BU.USER_ID = #{sBox.id})
+		</if>
+	</sql>
+	<sql id="commentChk">
+		<where>
+			<if test=' commentId == null or commentId == "" and replyCommentId == null or replyCommentId == "" '>
+				AND ID = (SELECT USER_ID
+						  FROM VIDEO
+						  WHERE ID = #{videoId})
+				AND ACTIVE IN (0, 2)
+				AND ID NOT IN (  SELECT BU.BLOCK_USER_ID
+									 FROM BLOCK_USER BU
+									 WHERE BU.USER_ID = (SELECT USER_ID
+									 					 FROM VIDEO
+									 					 WHERE ID = #{videoId})
+									 					 )
+			</if>
+		</where>
+	</sql>
+	<sql id="replyChk">
+		<where>
+			<if test=' commentId != null and commentId != "" and replyCommentId == null or replyCommentId == "" '>
+				AND ID = (SELECT USER_ID
+						  FROM VIDEO_COMMENT
+					  	  WHERE ID = #{commentId}
+					  	  AND VIDEO_ID = #{videoId})
+				AND ACTIVE IN (0, 2)
+				AND ID NOT IN (  SELECT BU.BLOCK_USER_ID
+									 FROM BLOCK_USER BU
+									 WHERE BU.USER_ID = (SELECT USER_ID
+									 					 FROM VIDEO
+									 					 WHERE ID = #{videoId})
+									 					 )
+			</if>
+		</where>
+	</sql>
+	<sql id="secReplyChk">
+		<where>
+			<if test=' commentId != null and commentId != "" and replyCommentId != null and replyCommentId != "" '>
+				AND ID = (SELECT USER_ID
+						  FROM VIDEO_COMMENT_REPLY
+					  	  WHERE COMMENT_ID = #{commentId}
+					  	  AND REPLY_COMMENT_ID = #{replyCommentId}
+					  	  AND VIDEO_ID = #{videoId}
+					  	  )
+				AND ACTIVE IN (0, 2)
+				AND ID NOT IN (  SELECT BU.BLOCK_USER_ID
+									 FROM BLOCK_USER BU
+									 WHERE BU.USER_ID = (SELECT USER_ID
+									 					 FROM VIDEO
+									 					 WHERE ID = #{videoId})
+									 					 )
+			</if>
+		</where>
+	</sql>
+
+	<select id="videoCnt" parameterType="map" resultType="int">
+		SELECT COUNT(*)AS CNT
+		FROM VIDEO AS VI
+		WHERE VI.PRIVACY_TYPE = 'public'
+		AND VI.VIDEO_ACTIVE = 1
+		<include refid="videoInfo" />
+	</select>
+
+	<select id="videoList" parameterType="map" resultType="box">
+		<include refid="cmn.pageStr" />
+		SELECT
+			  ROW_NUMBER() OVER(ORDER BY VI.ID ASC) AS RNUM
+			, VI.ID
+			, VI.USER_ID
+			, VI.DESCRIPTION
+			, VI.THUM
+			, VI.GIF
+			, VI.VIDEO_ACTIVE
+			, VI.VIEW
+			, VI.SECTION
+			, VI.SOUND_ID
+			, VI.PRIVACY_TYPE
+			, VI.ALLOW_COMMENTS
+			, VI.ALLOW_DUET
+			, VI.BLOCK
+			, VI.DUET_VIDEO_ID
+			, VI.OLD_VIDEO_ID
+			, VI.DURATION
+			, VI.PROMOTE
+			, DATE_FORMAT(VI.REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM VIDEO AS VI
+		WHERE VI.PRIVACY_TYPE = 'public'
+		AND VI.VIDEO_ACTIVE = 1
+		AND (SELECT ACTIVE
+			 FROM `USER`
+			 WHERE ID = VI.USER_ID ) NOT IN (0,2)
+		<include refid="videoInfo" />
+		<include refid="cmn.pageEnd" />
+	</select>
+
+	<!-- 팔로잉 여부 조회-->
+	<select id="followingChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE RECEIVER_ID = #{receiveU}
+		AND SENDER_ID = #{sendU}
+	</select>
+
+	<!-- 팔로잉 여부 조회-->
+	<select id="followerChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE SENDER_ID = #{sendU}
+		AND RECEIVER_ID = #{receiveU}
+	</select>
+
+	<select id="videoInfoView" parameterType="map" resultType="box">
+		SELECT
+			  VI.ID
+			, VI.USER_ID
+			, VI.DESCRIPTION
+			, VI.VIDEO
+			, VI.THUM
+			, VI.GIF
+			, VI.VIDEO_ACTIVE
+			, VI.VIEW
+			, VI.SECTION
+			, VI.SOUND_ID
+			, VI.PRIVACY_TYPE
+			, VI.ALLOW_COMMENTS
+			, VI.ALLOW_DUET
+			, VI.BLOCK
+			, VI.DUET_VIDEO_ID
+			, VI.OLD_VIDEO_ID
+			, VI.DURATION
+			, VI.PROMOTE
+			, DATE_FORMAT(VI.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+			, ( SELECT  COUNT(*) AS CNT
+				FROM VIDEO_LIKE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	AND USER_ID = #{myUserId}
+			  ) AS `LIKE`
+ 			, ( SELECT COUNT(*) AS CNT
+			 	FROM VIDEO_FAVOURITE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	AND USER_ID = #{myUserId}
+			 	) AS FAVOURITE
+ 			, ( SELECT COUNT(*) AS CNT
+			 	FROM VIDEO_FAVOURITE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	) AS FAVORITE_COUNT
+			, ( SELECT COUNT(*) AS CNT
+				FROM VIDEO_LIKE
+			 	WHERE VIDEO_ID = #{videoId}
+			 	) AS LIKE_COUNT
+			, ( SELECT COUNT(*) AS CNT
+			 	FROM VIDEO_COMMENT
+			 	WHERE VIDEO_ID = #{videoId}
+			 	) AS COMMENT_COUNT
+		FROM VIDEO AS VI
+		WHERE VI.ID = #{videoId}
+		AND VI.VIDEO_ACTIVE = 1
+	</select>
+
+	<select id="favouriteVideoInfo" parameterType="map" resultType="box">
+		SELECT
+			  VI.ID
+			, VI.USER_ID
+			, VI.DESCRIPTION
+			, VI.VIDEO
+			, VI.THUM
+			, VI.GIF
+			, VI.VIDEO_ACTIVE
+			, VI.VIEW
+			, VI.SECTION
+			, VI.SOUND_ID
+			, VI.PRIVACY_TYPE
+			, VI.ALLOW_COMMENTS
+			, VI.ALLOW_DUET
+			, VI.BLOCK
+			, VI.DUET_VIDEO_ID
+			, VI.OLD_VIDEO_ID
+			, VI.DURATION
+			, VI.PROMOTE
+			, DATE_FORMAT(VI.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+		FROM VIDEO AS VI
+		WHERE VI.ID = #{videoId}
+		AND VI.VIDEO_ACTIVE = 1
+	</select>
+
+	<select id="watchVideoInfo" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, VIDEO_ID
+			, USER_ID
+			, REG_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM VIDEO_WATCH
+		WHERE VIDEO_ID = #{videoId}
+		AND USER_ID = #{sBox.id}
+		GROUP BY USER_ID
+	</select>
+
+	<select id="setFilterView" resultType="String">
+		SELECT TEXT
+		FROM SETTING
+	</select>
+
+	<select id="">
+		SELECT COUNT(*) AS CNT
+		FROM FOLLOWER
+		WHERE SENDER_ID  = #{sendU}
+		AND RECEIVER_ID  =  #{receiveU}
+	</select>
+
+	<select id="crdtUserInfo" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, ACTIVE
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+		FROM USER
+		WHERE ID = #{userId}
+		GROUP BY ID
+	</select>
+
+	<select id="userView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, DEVICE_TOKEN
+			, AUTH_TOKEN
+			, EMAIL
+			, PASSWORD
+			, PHONE
+			, ACTIVE
+			, ACTIVE_REASON
+			, ACTIVE_REASON_DETAIL
+			, USERNAME
+			, ROLE
+			, POINT
+			, GRADE
+			, FIRST_NAME
+			, LAST_NAME
+			, GENDER
+			, BIO
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, TOKEN
+			, IP
+			, LOCK_CNT
+			, PASS_CHN_YN
+			, PASS_MODIFY_DATETIME
+			, REG_ID
+			, DATE_FORMAT(U.REG_DT , '%Y-%m-%d %H:%i:%s')AS REG_DT
+		FROM USER AS U
+		WHERE U.ID = #{myUserId}
+		AND U.ACTIVE NOT IN (0,2)
+	</select>
+
+	<select id="pushNotificationView" parameterType="map" resultType="box">
+		SELECT
+			  PN.ID
+			, PN.LIKES
+			, PN.COMMENTS
+			, PN.NEW_FOLLOWERS
+			, PN.MENTIONS
+			, PN.DIRECT_MESSAGES
+			, PN.VIDEO_UPDATES
+			, PN.POST_UPDATE
+			, PN.EVENT
+		FROM PUSH_NOTIFICATION PN
+		WHERE PN.ID = #{myUserId}
+	</select>
+
+	<select id="soundView" parameterType="map" resultType="box">
+		SELECT
+			  SO.ID
+			, SO.AUDIO
+			, SO.DURATION
+			, SO.NAME
+			, SO.DESCRIPTION
+			, SO.THUM
+			, SO.SOUND_SECTION_ID
+			, SO.UPLOADED_BY
+			, SO.PUBLISH
+			,  DATE_FORMAT(SO.REG_DT , '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM SOUND AS SO
+		WHERE SO.ID = #{soundId}
+	</select>
+
+
+	<select id="favouriteVideoChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_FAVOURITE VF
+		WHERE VF.VIDEO_ID  = #{videoId}
+		AND VF.USER_ID = #{sBox.id}
+	</select>
+
+	<select id="videoChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO
+		WHERE ID = #{videoId}
+		AND VIDEO_ACTIVE = 1
+	</select>
+
+	<select id="favouriteVideoView" parameterType="map" resultType="box">
+		SELECT
+			  VF.ID
+			, VF.USER_ID
+			, VF.VIDEO_ID
+			, VF.REG_ID
+			, DATE_FORMAT(VF.REG_DT , '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, VF.MOD_ID
+			, DATE_FORMAT(VF.MOD_DT , '%Y-%m-%d %H:%i:%s') AS MOD_DT
+			, 'FAVOURITE' AS MSG
+		FROM VIDEO_FAVOURITE VF
+		WHERE VF.VIDEO_ID  = #{videoId}
+		AND VF.USER_ID = #{sBox.id}
+	</select>
+
+	<select id="videoComment" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, VIDEO_ID
+			, COMMENT
+			, COMMENT_ACTIVE
+			, REG_ID
+			, DATE_FORMAT(REG_DT , '%Y-%m-%d %H:%i:%s') AS REG_DT
+			, MOD_ID
+			, DATE_FORMAT(MOD_DT , '%Y-%m-%d %H:%i:%s') AS MOD_DT
+		FROM VIDEO_COMMENT
+		WHERE VIDEO_ID = #{videoId}
+		AND USER_ID  = #{sBox.id}
+		AND COMMENT_ACTIVE = 1
+	</select>
+
+	<select id="videoCommBlockChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BLOCK_USER
+		WHERE BLOCK_USER_ID = (SELECT USER_ID
+								FROM VIDEO
+								WHERE VIDEO_ID = #{videoId})
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<select id="userInfoView" parameterType="map" resultType="box">
+		 SELECT
+			  U.ID
+			, U.DEVICE_TOKEN
+			, U.AUTH_TOKEN
+			, U.EMAIL
+			, U.PASSWORD
+			, U.PHONE
+			, U.ACTIVE
+			, U.ACTIVE_REASON
+			, U.ACTIVE_REASON_DETAIL
+			, U.USERNAME
+			, U.ROLE
+			, U.POINT
+			, U.GRADE
+			, U.FIRST_NAME
+			, U.LAST_NAME
+			, U.GENDER
+			, U.BIO
+			, U.PROFILE_PIC
+			, U.PROFILE_PIC_SMALL
+			, U.TOKEN
+			, U.IP
+			, U.LOCK_CNT
+			, U.PASS_CHN_YN
+			, U.PASS_MODIFY_DATETIME
+			, DATE_FORMAT(U.REG_DT , '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM `USER` AS U
+		WHERE U.ID = #{sBox.id}
+	</select>
+
+	<select id="secessUsrChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM `USER`
+		<include refid="commentChk"/>
+		<include refid="replyChk"/>
+		<include refid="secReplyChk"/>
+	</select>
+
+	<select id="delVideoChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO
+		WHERE ID = #{videoId}
+		AND VIDEO_ACTIVE IN (0,2)
+	</select>
+
+	<select id="blockUsrChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM BLOCK_USER
+		WHERE USER_ID = 3
+		AND BLOCK_USER_ID  = (SELECT USER_ID
+								FROM VIDEO_COMMENT
+								WHERE ID = #{commentId}
+								AND VIDEO_ID = #{videoId})
+	</select>
+
+	<select id="commDelChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_COMMENT
+		WHERE ID = #{commentId}
+		AND DEL_YN = 'Y'
+
+	</select>
+
+	<select id="replyCommDelChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_COMMENT_REPLY
+		WHERE VIDEO_ID = #{videoId}
+		AND COMMENT_ID = #{commentId}
+		AND REPLY_COMMENT_ID = #{replyCommentId}
+		AND DEL_YN = 'Y'
+	</select>
+
+	<select id="videoCommList" parameterType="map" resultType="box">
+		SELECT
+			  A.ID
+			, A.USER_ID
+			, A.VIDEO_ID
+			, A.COMMENT_ACTIVE
+			, (CASE WHEN (SELECT ACTIVE FROM `USER` WHERE ID= A.USER_ID) = 1 AND A.DEL_YN = 'N' THEN A.COMMENT
+					WHEN A.DEL_YN = 'Y' THEN '삭제된 댓글입니다.'
+					ELSE '탈퇴한 회원으로 블라인드 처리 되었습니다.'
+				END) AS COMMENT
+			, DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, (SELECT USERNAME FROM `USER` WHERE ID= A.USER_ID) REG_ID
+			, A.DEL_YN
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_LIKE WHERE COMMENT_ID = A.ID) AS LIKE_CNT
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_LIKE TV WHERE TV.COMMENT_ID = A.ID AND TV.USER_ID = #{sBox.id}) AS IS_LIKE
+			, (	 CASE WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW()), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , A.REG_DT, NOW()), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<=]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) > 30 AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW()))  <![CDATA[<=]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.REG_DT, NOW()), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, A.REG_DT, NOW()), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+			, (SELECT COUNT(*) AS CNT FROM VIDEO_LIKE WHERE VIDEO_ID = #{videoId}) AS LIKE_COUNT
+		FROM VIDEO_COMMENT A
+		WHERE VIDEO_ID = #{videoId}
+		ORDER BY REG_DT DESC
+	</select>
+
+	<select id="videoReplyCommList" parameterType="map" resultType="box">
+		SELECT
+			  A.ID
+			, A.USER_ID
+			, A.REPLY_COMMENT_ID
+			, A.COMMENT_ID
+			, A.COMMENT_ACTIVE AS REPLY_COMMENT_ACTIVE
+			, (CASE WHEN (SELECT ACTIVE FROM `USER` WHERE ID= A.USER_ID) = 1 AND A.DEL_YN = 'N' THEN A.COMMENT
+					WHEN A.DEL_YN = 'Y' THEN '삭제된 댓글입니다.'
+					ELSE '탈퇴한 회원으로 블라인드 처리 되었습니다.'
+				END) AS COMMENT
+			, DATE_FORMAT(A.REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+			, (SELECT USERNAME FROM USER WHERE ID= A.USER_ID) REG_ID
+			, A.DEL_YN
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE WHERE COMMENT_ID = A.ID) AS LIKE_CNT
+			, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVR WHERE TVR.COMMENT_ID = A.ID AND TVR.USER_ID = #{sBox.id}) AS IS_LIKE
+			, (	 CASE WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(SECOND, A.REG_DT, NOW()), '초전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) <![CDATA[<]]> 60 THEN CONCAT(TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()), '분전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') = DATE_FORMAT(NOW() , '%Y-%m-%d') AND TIMESTAMPDIFF(MINUTE, A.REG_DT, NOW()) > 60 THEN CONCAT(TIMESTAMPDIFF(HOUR, A.REG_DT, NOW()), '시전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 14 THEN CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW()), '일 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) <![CDATA[<]]> 30  THEN CONCAT(TIMESTAMPDIFF(WEEK , A.REG_DT, NOW()), '주 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) > 30 AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW()))  <![CDATA[<]]> 365 THEN CONCAT(TIMESTAMPDIFF(MONTH, A.REG_DT, NOW()), '달 전에 등록됨')
+					  WHEN DATE_FORMAT(A.REG_DT , '%Y-%m-%d') <![CDATA[<]]> DATE_FORMAT(NOW() , '%Y-%m-%d') AND CONCAT(TIMESTAMPDIFF(DAY, A.REG_DT, NOW())) > 365  THEN CONCAT(TIMESTAMPDIFF(YEAR, A.REG_DT, NOW()), '년 전에 등록됨')
+				 END
+			 	)AS DIFF_DATE
+		FROM VIDEO_COMMENT_REPLY A
+		WHERE COMMENT_ID = #{commentId}
+		ORDER BY REG_DT ASC
+	</select>
+
+	<select id="newVideoCommentView" parameterType="map" resultType="box">
+		SELECT
+			ID
+			, USER_ID
+			, VIDEO_ID
+			, COMMENT
+			, COMMENT_ACTIVE
+			, DATE_FORMAT(REG_DT, '%Y-%M-%D %H:%M:%S') AS REG_DT
+		FROM VIDEO_COMMENT
+		WHERE USER_ID = #{sBox.id}
+		AND VIDEO_ID = #{videoId}
+		ORDER BY REG_DT DESC
+		LIMIT 1
+	</select>
+
+	<select id="replyCommView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, VIDEO_ID
+			, USER_ID
+			, COMMENT_ID
+			, REPLY_COMMENT_ID
+			, COMMENT
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM VIDEO_COMMENT_REPLY
+		WHERE VIDEO_ID = #{videoId}
+		AND USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+		ORDER BY REG_DT DESC
+		LIMIT 1;
+	</select>
+
+	<select id="videoCmmWritUsr" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USERNAME
+			, ACTIVE
+			, FIRST_NAME
+            , LAST_NAME
+			, PROFILE_PIC
+			, PROFILE_PIC_SMALL
+			, ROLE
+		FROM `USER`
+		WHERE ID = #{commUserId}
+		AND ACTIVE = 1
+	</select>
+
+	<select id="likeCommenChk" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_COMMENT_LIKE
+		WHERE COMMENT_ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<select id="likeReplyCommenChk"  parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_COMMENT_REPLY_LIKE
+		WHERE COMMENT_ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<select id="likeVideoChk"  parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_LIKE
+		WHERE VIDEO_ID = #{videoId}
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<select id="addVideoFavouriteSave" parameterType="map" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM VIDEO_FAVOURITE
+		WHERE VIDEO_ID = #{videoId}
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<select id="hashtagChk" parameterType="String" resultType="int">
+		SELECT COUNT(*) AS CNT
+		FROM HASHTAG
+		WHERE NAME = #{hashtag}
+	</select>
+
+	<select id="showSoundsList" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, AUDIO
+			, DURATION
+			, NAME
+			, DESCRIPTION
+			, THUM
+			, SOUND_SECTION_ID
+			, UPLOADED_BY
+			, PUBLISH
+			, REG_ID
+			, DATE_FORMAT(REG_DT , '%Y-%m-%d %H:%i:%s') AS REG_DT
+		FROM SOUND
+	</select>
+
+	<select id="hashtagIdView" parameterType="map" resultType="box">
+		SELECT ID
+		FROM HASHTAG
+		WHERE NAME = #{hashtag}
+	</select>
+
+	<select id="newVideoView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+		FROM VIDEO
+		WHERE USER_ID = #{sBox.id}
+		AND VIDEO_ACTIVE =1
+		ORDER BY REG_DT DESC
+		LIMIT 1
+	</select>
+
+	<select id="playerFollowList" parameterType="map" resultType="box">
+		SELECT
+			SENDER_ID AS FOLLOWER_ID
+		FROM FOLLOWER
+		WHERE RECEIVER_ID = #{sBox.id}
+	</select>
+
+	<select id="commentIsLike" parameterType="map" resultType="box">
+		SELECT
+				  COUNT(*) AS LIKE_COUNT
+				, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVK WHERE COMMENT_ID= #{commentId} AND USER_ID= #{sBox.id}) AS IS_LIKE
+		FROM VIDEO_COMMENT_LIKE
+		WHERE COMMENT_ID  = #{commentId}
+	</select>
+
+	<select id="commentReplyIsLike" parameterType="map" resultType="box">
+		SELECT
+				  COUNT(*) AS LIKE_COUNT
+				, (SELECT COUNT(*) FROM VIDEO_COMMENT_REPLY_LIKE TVK WHERE COMMENT_ID= #{commentId} AND USER_ID= #{sBox.id}) AS IS_LIKE
+		FROM VIDEO_COMMENT_REPLY_LIKE
+		WHERE COMMENT_ID  = #{commentId}
+	</select>
+
+	<select id="videoCommChk" parameterType="map" resultType="int">
+			SELECT COUNT(*) AS CNT
+			FROM VIDEO_COMMENT
+			WHERE ID = #{commentId}
+			AND USER_ID = #{sBox.id}
+			AND DEL_YN = 'N'
+			AND USE_YN = 'Y'
+	</select>
+
+	<select id="videoReCommChk" parameterType="map" resultType="int">
+			SELECT COUNT(*) AS CNT
+			FROM VIDEO_COMMENT_REPLY
+			WHERE ID = #{replyCommentId}
+			AND USER_ID = #{sBox.id}
+			AND DEL_YN = 'N'
+			AND USE_YN = 'Y'
+	</select>
+
+	<select id="deivceView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, `KEY`
+			, REG_DT
+		FROM DEVICE
+		WHERE ID = #{deviceId}
+	</select>
+
+	<select id="videoFavouriteView" parameterType="map" resultType="box">
+		SELECT
+			  ID
+			, USER_ID
+			, VIDEO_ID
+			, DATE_FORMAT(REG_DT, '%Y-%m-%d %H:%m:%s') AS REG_DT
+		FROM VIDEO_FAVOURITE
+		WHERE VIDEO_ID = #{videoId}
+		AND USER_ID = #{sBox.id}
+	</select>
+
+	<insert id="hashtagInsert" parameterType="map" >
+		INSERT INTO HASHTAG (
+			  NAME
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{hashtag}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="watchVideoInsert" parameterType="map">
+		INSERT INTO VIDEO_WATCH (
+			  DEVICE_ID
+			, VIDEO_ID
+			, USER_ID
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{deviceId}
+			, #{videoId}
+			, #{sBox.id}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="videoHashtagInsert" parameterType="map">
+		INSERT HASHTAG_VIDEO (
+			  VIDEO_ID
+			, HASHTAG_ID
+			, REG_ID
+			, REG_DT
+		) VALUES (
+			  #{videoId}
+			, #{hashtag}
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="videoCommInsert" parameterType="map">
+		INSERT INTO VIDEO_COMMENT (
+			  USER_ID
+			, VIDEO_ID
+			, COMMENT
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{videoId}
+			, #{comment}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="videoCommReplyInsert" parameterType="map">
+		INSERT INTO VIDEO_COMMENT_REPLY (
+			  VIDEO_ID
+			, USER_ID
+			, COMMENT_ID
+			, REPLY_COMMENT_ID
+			, COMMENT
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{videoId}
+			, #{sBox.id}
+			, #{commentId}
+			, #{replyCommentId}
+			, #{comment}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="insertFavourite" parameterType="map">
+		INSERT INTO VIDEO_FAVOURITE (
+			  USER_ID
+			, VIDEO_ID
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{videoId}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="myShowPepperInsert" parameterType="map">
+		INSERT INTO VIDEO (
+			  USER_ID
+			, DESCRIPTION
+			, VIDEO
+			, THUM
+			, GIF
+			, SOUND_ID
+			, ALLOW_COMMENTS
+			, DURATION
+			, PROMOTE
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		)VALUES(
+		 	  #{sBox.id}
+			, #{description}
+			, #{video}
+			, #{thum}
+			, #{gif}
+			, #{sound_id}
+			, #{allow_comments}
+			, #{duration}
+			, '0'
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="videoCommLike" parameterType="map">
+		INSERT INTO VIDEO_COMMENT_LIKE (
+			  USER_ID
+			, COMMENT_ID
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{commentId}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="videoReplyCommLike" parameterType="map">
+		INSERT INTO VIDEO_COMMENT_REPLY_LIKE (
+			  USER_ID
+			, COMMENT_ID
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{commentId}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<insert id="videoLike" parameterType="map">
+		INSERT INTO VIDEO_LIKE (
+			  USER_ID
+			, VIDEO_ID
+			, REG_ID
+			, REG_DT
+			, MOD_ID
+			, MOD_DT
+		) VALUES (
+			  #{sBox.id}
+			, #{videoId}
+			, #{sBox.id}
+			, NOW()
+			, #{sBox.id}
+			, NOW()
+		)
+	</insert>
+
+	<update id="videoCommDel" parameterType="map">
+		UPDATE VIDEO_COMMENT
+			SET   DEL_YN = 'Y'
+				, USE_YN = 'N'
+				, COMMENT_ACTIVE = 0
+		WHERE ID = #{commentId}
+		AND USER_ID = #{sBox.id}
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+	</update>
+
+	<update id="videoReplyCommDel" parameterType="map">
+		UPDATE VIDEO_COMMENT_REPLY
+			SET   DEL_YN = 'Y'
+				, USE_YN = 'N'
+				, COMMENT_ACTIVE = 0
+		WHERE ID = #{replyCommentId}
+		AND USER_ID = #{sBox.id}
+		AND DEL_YN = 'N'
+		AND USE_YN = 'Y'
+	</update>
+
+	<update id="videoViewCntUpdate" parameterType="map">
+		UPDATE VIDEO
+			SET   VIEW = VIEW + 1
+		WHERE ID = #{videoId}
+	</update>
+
+	<delete id="videoCommUnLike" parameterType="map">
+		DELETE FROM VIDEO_COMMENT_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+	</delete>
+
+	<delete id="videoReplyCommUnLike" parameterType="map">
+		DELETE FROM VIDEO_COMMENT_REPLY_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND COMMENT_ID = #{commentId}
+	</delete>
+
+	<delete id="videoUnLike" parameterType="map">
+		DELETE FROM VIDEO_LIKE
+		WHERE USER_ID = #{sBox.id}
+		AND VIDEO_ID = #{videoId}
+	</delete>
+
+	<delete id="deleteFavourite" parameterType="map">
+		DELETE FROM VIDEO_FAVOURITE
+		WHERE USER_ID = #{sBox.id}
+		AND VIDEO_ID = #{videoId}
+	</delete>
+
+</mapper>

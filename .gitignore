@@ -1,0 +1,10 @@
+/bin/
+/build/
+/.classpath
+/.externalToolBuilders/
+/.gradle/
+/.project
+/.settings/
+/.temp-gsc-front-backend-classpathOnly-1671004619943.jar
+/application.pid
+.temp*
