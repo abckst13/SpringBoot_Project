@@ -1,19 +1,18 @@
 
 ---
 spring:
-  config:
+  config: 
     activate:
       on-profile: local
-       
 ---
 spring:
   datasource:
     hikari:
-      jdbc-url: jdbc:mariadb://127.0.0.1:13306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
-      driver-class-name: org.mariadb.jdbc.Driver
-      username: peper
+      jdbc-url: jdbc:mysql://localhost:3306/free?characeterEncoding=UTF-8&serverTimezone=UTC
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      username: root
+      password: 1234
       encpassword: N7aq13LSgdh/M6Ly5PKW1w==
-      password: peperdb123
       maximum-pool-size: 7
       max-lifetime: 1600000
       connection-timeout: 3000
@@ -105,7 +104,7 @@ logbook:
   #filter.form-request-mode: parameter
 logging:
   level.org.springframework.boot.autoconfigure: ERROR
-  config: classpath:logging/logback-${spring.config.activate.on-profile}.xml
+#  config: classpath:logging/logback-${spring.config.activate.on-profile}.xml
   pattern:
     console: "[%d{HH:mm:ss.SSS}] [%thread{40}] %clr(%-5level) %clr(%logger{36}.%M:%L){cyan} | %msg%n%ex"
   charset:
@@ -122,12 +121,12 @@ spring:
   config: 
     activate:
       on-profile: dev
-  datasource:
-    hikari:
-      jdbc-url: jdbc:mariadb://10.10.10.90:3306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
-      username: peper
-      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
-      password: peperdb123
+#  datasource:
+#    hikari:
+#      jdbc-url: jdbc:mariadb://10.10.10.90:3306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
+#      username: peper
+#      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
+#      password: peperdb123
       
 server:
   port: 8052
@@ -150,12 +149,12 @@ spring:
   config:
     activate:
       on-profile: prod
-  datasource:
-    hikari:
-      jdbc-url: jdbc:mariadb://10.10.10.90:3306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
-      username: peper
-      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
-      password: peperdb123
+#  datasource:
+#    hikari:
+#      jdbc-url: jdbc:mariadb://10.10.10.90:3306/peperdb?autoReconnect=true&amp;characterEncoding=utf8&amp;serverTimezone=UTC
+#      username: peper
+#      encpassword: N7aq13LSgdh/M6Ly5PKW1w==
+#      password: peperdb123
 server:
   port: 8052
   host:

@@ -63,7 +63,7 @@ dependencies {
   	implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.2.2'
 
 	// pep-core-lib Spring Boot Project Module Dependencies
-	implementation (project(':pep-core-lib'))
+	implementation (project(':core-lib'))
 
 	// Spring Boot DevTools
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -84,6 +84,8 @@ dependencies {
 	testAnnotationProcessor 'org.projectlombok:lombok'
 	//antlr
 	implementation 'antlr:antlr:2.7.7'
+	//mysql 
+	implementation 'mysql:mysql-connector-java:8.0.32'
 }
 
 sourceSets {

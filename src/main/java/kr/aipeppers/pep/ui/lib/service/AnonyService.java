@@ -12,13 +12,11 @@ import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.sun.management.OperatingSystemMXBean;
 
 import kr.aipeppers.pep.core.cont.CmnConst;
 import kr.aipeppers.pep.core.data.Box;
-import kr.aipeppers.pep.core.domain.ResIntDto;
 import kr.aipeppers.pep.core.exception.BizException;
 import kr.aipeppers.pep.core.util.BoxUtil;
 import kr.aipeppers.pep.core.util.DateUtil;
@@ -52,9 +50,7 @@ public class AnonyService {
 
 	@Autowired
 	protected CmnService cmnService;
-
-
-
+		
 	@Value("${spring.config.activate.on-profile}")
     private String ACTIVE;
 

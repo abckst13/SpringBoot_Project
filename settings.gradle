@@ -1,5 +1,5 @@
 rootProject.name = 'pep-ui-backend'
-include ':pep-core-lib'
+include ':core-lib'
 
 for (project in rootProject.children) {
 	project.projectDir = file("../${project.name}")
